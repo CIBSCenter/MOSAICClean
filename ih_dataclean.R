@@ -3,6 +3,13 @@
 ##  collection
 ################################################################################
 
+## -- THIS WILL NEED TO BE UPDATED ---------------------------------------------
+## At initial run, only the first 94 patients will be cleaned. The transition to
+##  dynamic data pulling in REDCap means that we are currently behind on data
+##  entry for later patients; listing queries for these patients will be
+##  unproductive until data entry is caught up.
+last_pt <- 94
+
 ## load tidyverse, lubridate for data management
 library(tidyverse)
 library(lubridate)
@@ -72,7 +79,10 @@ day1_df <- post_to_df(
   filter(!str_detect(tolower(id), "test")) %>%
   ## Convert date/time variables to proper formats
   mutate_at(vars(one_of(date_vars)), ymd) %>%
-  mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.)))
+  mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.))) %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(as.numeric(ptnum) <= last_pt)
 
 ################################################################################
 ## Enrollment Qualification Form
@@ -93,7 +103,24 @@ enrqual_codes <- tribble(
   "inc_icu",   "Inclusion criteria: in ICU either missing or marked No",
   "inc_organ", "Inclusion criteria: qualifying organ failure either missing or marked No",
   "inc_organ_present", "Patient had qualifying organ failure, but no specific organ failures marked present",
-  "inc_mv",    "Patient marked as having both invasive MV and NIPPV at inclusion"
+  "inc_mv",    "Patient marked as having both invasive MV and NIPPV at inclusion",
+  ## Exclusion criteria: Should usually be present and No; there may be exceptions
+  "exc_rapid", "Exclusion: rapidly resolving organ failure either missing or marked Yes; please correct or confirm",
+  "exc_5days", "Exclusion: cumulative hospital days either missing or marked Yes; please correct or confirm",
+  "exc_indep", "Exclusion: inability to live independently either missing or marked Yes; please correct or confirm",
+  "exc_neuro", "Exclusion: severe neurologic injury either missing or marked Yes; please correct or confirm",
+  "exc_bmi",   "Exclusion: BMI > 50 either missing or marked Yes; please correct or confirm",
+  "exc_subst", "Exclusion: active substance abuse either missing or marked Yes; please correct or confirm",
+  "exc_fu",    "Exclusion: blind, deaf, English either missing or marked Yes; please correct or confirm",
+  "exc_morib", "Exclusion: expected death within 24h either missing or marked Yes; please correct or confirm",
+  "exc_pris",  "Exclusion: prisoner either missing or marked Yes; please correct or confirm",
+  "exc_200mi", "Exclusion: >200 miles from Nashville either missing or marked Yes; please correct or confirm",
+  "exc_home",  "Exclusion: homeless with no secondary contact either missing or marked Yes; please correct or confirm",
+  "exc_coenr", "Exclusion: co-enrollment either missing or marked Yes; please correct or confirm",
+  "exc_mdref", "Exclusion: attending refusal either missing or marked Yes; please correct or confirm",
+  "exc_ptref", "Exclusion: patient/surrogate refusal either missing or marked Yes; please correct or confirm",
+  "exc_screen", "Exclusion: >72h before screening either missing or marked Yes; please correct or confirm",
+  "exc_surr",  "Exclusion: >72h before surrogate available either missing or marked Yes; please correct or confirm"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -109,6 +136,7 @@ rownames(enrqual_issues) <- with(day1_df, {
 ## -- Determine true/false for each potential issue ----------------------------
 ## Usual format: `df_issues[, "issue_name"] <- [condition]`
 
+## -- Inclusion criteria -------------------------------------------------------
 ## Date met inclusion criteria: must be present, within range of 3/1/2017-today
 enrqual_issues[, "inc_date"] <- with(day1_df, {
   is.na(incl_dttm) |
@@ -138,6 +166,56 @@ enrqual_issues[, "inc_organ_present"] <- with(day1_df, {
 ## Patient cannot be on both invasive and noninvasive ventilation
 enrqual_issues[, "inc_mv"] <- with(day1_df, {
   !is.na(organ_fail_present_1) & !is.na(organ_fail_present_2)
+})
+
+## -- Exclusion criteria -------------------------------------------------------
+enrqual_issues[, "exc_rapid"] <- with(day1_df, {
+  is.na(organ_resolve_exc) | organ_resolve_exc == "Yes"
+})
+enrqual_issues[, "exc_5days"] <- with(day1_df, {
+  is.na(cum_days_exc) | cum_days_exc == "Yes"
+})
+enrqual_issues[, "exc_indep"] <- with(day1_df, {
+  is.na(indep_exc) | indep_exc == "Yes"
+})
+enrqual_issues[, "exc_neuro"] <- with(day1_df, {
+  is.na(neuro_exc) | neuro_exc == "Yes"
+})
+enrqual_issues[, "exc_bmi"] <- with(day1_df, {
+  is.na(bmi_exc) | bmi_exc == "Yes"
+})
+enrqual_issues[, "exc_subst"] <- with(day1_df, {
+  is.na(sub_psyc_exc) | sub_psyc_exc == "Yes"
+})
+enrqual_issues[, "exc_fu"] <- with(day1_df, {
+  is.na(blind_deaf_exc) | blind_deaf_exc == "Yes"
+})
+enrqual_issues[, "exc_morib"] <- with(day1_df, {
+  is.na(moribund_exc) | moribund_exc == "Yes"
+})
+enrqual_issues[, "exc_pris"] <- with(day1_df, {
+  is.na(prison_exc) | prison_exc == "Yes"
+})
+enrqual_issues[, "exc_200mi"] <- with(day1_df, {
+  is.na(miles_exc) | miles_exc == "Yes"
+})
+enrqual_issues[, "exc_home"] <- with(day1_df, {
+  is.na(homeless_exc) | homeless_exc == "Yes"
+})
+enrqual_issues[, "exc_coenr"] <- with(day1_df, {
+  is.na(coenroll_exc) | coenroll_exc == "Yes"
+})
+enrqual_issues[, "exc_mdref"] <- with(day1_df, {
+  is.na(attending_refused_exc) | attending_refused_exc == "Yes"
+})
+enrqual_issues[, "exc_ptref"] <- with(day1_df, {
+  is.na(ptsurr_refusal_exc) | ptsurr_refusal_exc == "Yes"
+})
+enrqual_issues[, "exc_screen"] <- with(day1_df, {
+  is.na(elig_expired_exc) | elig_expired_exc == "Yes"
+})
+enrqual_issues[, "exc_surr"] <- with(day1_df, {
+  is.na(nosurr_exc) | nosurr_exc == "Yes"
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
