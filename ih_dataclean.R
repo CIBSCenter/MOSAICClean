@@ -231,12 +231,98 @@ enrqual_final <- enrqual_errors %>%
   mutate(form = "Enrollment Qualification")
 
 ################################################################################
+## Contact Information
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+contact_missvars <- c(
+  "title", "sex", "first_name", "last_name", "name_common", "ssn", "homeless"
+)
+contact_missing <- check_missing(
+  df = day1_df, variables = contact_missvars, ddict = ih_datadict
+)
+
+## -- Custom checks ------------------------------------------------------------
+## List of checks + messages
+contact_codes <- tribble(
+  ~ code,        ~ msg,
+  "street",      "Patient not homeless, but missing street address",
+  "city",        "Patient not homeless, but missing city",
+  "state",       "Patient not homeless, but missing state",
+  "zip",         "Patient not homeless, but missing ZIP",
+  "preferred",   "No preferred method of contact checked",
+  "pref_home",   "Preferred contact = home phone, but no home phone entered",
+  "pref_cell",   "Preferred contact = mobile phone, but no mobile phone entered",
+  "pref_work",   "Preferred contact = work phone, but no work phone entered",
+  "pref_email",  "Preferred contact = email, but no email address entered",
+  "pref_social", "Preferred contact = social media, but no info entered",
+  "pref_other",  "Preferred contact = other, but no other phone entered"
+) %>%
+  as.data.frame()
+
+## Initialize matrix
+contact_issues <- matrix(
+  FALSE, ncol = nrow(contact_codes), nrow = nrow(day1_df)
+)
+colnames(contact_issues) <- contact_codes$code
+rownames(contact_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## Street address for patients marked as not homeless
+contact_issues[, "street"] <- with(day1_df, {
+  !is.na(homeless) & homeless == "No" & is.na(pt_street)
+})
+contact_issues[, "city"] <- with(day1_df, {
+  !is.na(homeless) & homeless == "No" & is.na(pt_city)
+})
+contact_issues[, "state"] <- with(day1_df, {
+  !is.na(homeless) & homeless == "No" & is.na(pt_state)
+})
+contact_issues[, "zip"] <- with(day1_df, {
+  !is.na(homeless) & homeless == "No" & is.na(pt_zip)
+})
+
+## Preferred method of contact
+contact_issues[, "preferred"] <-
+  rowSums(!is.na(day1_df[, grep("^pt\\_pref\\_[0-9]+$", names(day1_df))])) == 0
+
+## Phone numbers/email are checked for formatting automatically by REDCap
+## THANK YOU REDCAP
+contact_issues[, "pref_home"] <- with(day1_df, {
+  !is.na(pt_pref_0) & is.na(pt_home_phone)
+})
+contact_issues[, "pref_cell"] <- with(day1_df, {
+  !is.na(pt_pref_1) & is.na(pt_mobile_phone)
+})
+contact_issues[, "pref_work"] <- with(day1_df, {
+  !is.na(pt_pref_2) & is.na(pt_work_phone)
+})
+contact_issues[, "pref_email"] <- with(day1_df, {
+  !is.na(pt_pref_3) & is.na(pt_email)
+})
+contact_issues[, "pref_social"] <- with(day1_df, {
+  !is.na(pt_pref_4) & is.na(pt_socialmedia)
+})
+contact_issues[, "pref_other"] <- with(day1_df, {
+  !is.na(pt_pref_99) & is.na(pt_other_phone)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+contact_errors <- create_error_df(
+  error_matrix = contact_issues, error_codes = contact_codes
+)
+
+contact_final <- bind_rows(contact_missing, contact_errors) %>%
+  mutate(form = "Contact Information")
+
+################################################################################
 ## Combine all queries and export to output/ for uploading
 ################################################################################
 
 ## Combine all queries into a single data.frame
 error_dfs <- list(
-  enrqual_final
+  enrqual_final,
+  contact_final
 )
 
 ## Create variables needed to identify specific queries
