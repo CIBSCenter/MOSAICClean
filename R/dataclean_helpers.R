@@ -143,7 +143,7 @@ check_missing <- function(df, variables, ddict = datadict){
     )
     colnames(missing_matrix) <- paste0("miss_", variables)
     rownames(missing_matrix) <-
-      paste0(df[,"study_id"], "; ", df[,"redcap_event_name"])
+      paste0(df[,"id"], "; ", df[,"redcap_event_name"])
     
     ## Create final data set: One row per column per missing value, with error
     ## message that matches that column name
@@ -298,7 +298,7 @@ check_limits_numeric <- function(
     )
     colnames(limits_matrix) <- variables
     rownames(limits_matrix) <-
-      paste0(df[,"study_id"], "; ", df[,"redcap_event_name"])
+      paste0(df[,"id"], "; ", df[,"redcap_event_name"])
     
     ## Create final data set: One row per column per missing value, with error
     ## message that matches that column name
