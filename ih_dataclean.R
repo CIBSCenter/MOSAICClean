@@ -226,3 +226,37 @@ enrqual_issues[, "exc_surr"] <- with(day1_df, {
 enrqual_errors <- create_error_df(
   error_matrix = enrqual_issues, error_codes = as.data.frame(enrqual_codes)
 )
+
+enrqual_final <- enrqual_errors %>%
+  mutate(form = "Enrollment Qualification")
+
+################################################################################
+## Combine all queries and export to output/ for uploading
+################################################################################
+
+## Combine all queries into a single data.frame
+error_dfs <- list(
+  enrqual_final
+)
+
+## Create variables needed to identify specific queries
+all_issues <- bind_rows(error_dfs) %>%
+  ## Separate ID, event name from id column
+  separate(id, into = c("id", "event"), sep = "; ") %>%
+  ## Create a unique query number for all issues for each patient
+  group_by(id) %>%
+  mutate(querynum = 1:n()) %>%
+  ungroup() %>%
+  ## Create total query ID: patient ID + date + querynum
+  mutate(querydate = format(Sys.Date(), "%Y-%m-%d")) %>%
+  unite("queryid", id, querydate, querynum, sep = "_", remove = FALSE) %>%
+  ## Select variables in order needed for data clean database
+  dplyr::select(queryid, id, querydate, form, event, msg)
+
+## TODO: Remove queries that have already been addressed and are unfixable/
+##       errors
+## WAITING ON: data clean database to be built and populated; data clean to take
+##  place
+
+## -- Write final info to output/ ----------------------------------------------
+write_csv(all_issues, path = "output/testclean.csv")
