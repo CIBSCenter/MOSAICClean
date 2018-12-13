@@ -25,4 +25,4 @@ programmatically access the appropriate REDCap databases.
     - `dataclean_helpers.R`: Helper functions used in primary data cleaning
     scripts
 - `/output`: Destination for CSV files containing queries from each run of
-`ih_data_clean.R`. One file per site per date.
+`ih_dataclean.R`. One file per site per date.
