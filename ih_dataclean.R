@@ -97,6 +97,8 @@ day1_df <- post_to_df(
 ## tribble = row-wise data.frame; easier to match code + message
 enrqual_codes <- tribble(
   ~ code,      ~ msg,
+  ## Protocol present? (Only one like this; not worth separate missing matrix)
+  "protocol",  "Missing current approved protocol at enrollment",
   ## Inclusion criteria
   "inc_date",  "Inclusion criteria date is missing, prior to March 2017, or after date script run",
   "inc_adult", "Inclusion criteria: adult patient either missing or marked No",
@@ -135,6 +137,8 @@ rownames(enrqual_issues) <- with(day1_df, {
 
 ## -- Determine true/false for each potential issue ----------------------------
 ## Usual format: `df_issues[, "issue_name"] <- [condition]`
+
+enrqual_issues[, "protocol"] <- is.na(day1_df$protocol)
 
 ## -- Inclusion criteria -------------------------------------------------------
 ## Date met inclusion criteria: must be present, within range of 3/1/2017-today
