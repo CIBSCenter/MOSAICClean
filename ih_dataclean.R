@@ -34,6 +34,12 @@ date_vars <- ih_datadict %>%
   ) %>%
   pull(field_name)
 
+dttm_vars <- ih_datadict %>%
+  filter(
+    text_validation_type_or_show_slider_number %in% c("datetime_mdy")
+  ) %>%
+  pull(field_name)
+
 ## -- Export data --------------------------------------------------------------
 ## Data collected ONLY on day of enrollment
 day1_df <- post_to_df(
@@ -65,7 +71,8 @@ day1_df <- post_to_df(
   ## Remove any test patients from dataset
   filter(!str_detect(tolower(id), "test")) %>%
   ## Convert date/time variables to proper formats
-  mutate_at(vars(one_of(date_vars)), ymd)
+  mutate_at(vars(one_of(date_vars)), ymd) %>%
+  mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.)))
 
 ################################################################################
 ## Enrollment Qualification Form
@@ -81,13 +88,14 @@ day1_df <- post_to_df(
 enrqual_codes <- tribble(
   ~ code,      ~ msg,
   ## Inclusion criteria
-  "inc_date",  "Inclusion criteria date prior to March 2017 or after date script run",
+  "inc_date",  "Inclusion criteria date is missing, prior to March 2017, or after date script run",
   "inc_adult", "Inclusion criteria: adult patient either missing or marked No",
   "inc_icu",   "Inclusion criteria: in ICU either missing or marked No",
   "inc_organ", "Inclusion criteria: qualifying organ failure either missing or marked No",
   "inc_organ_present", "Patient had qualifying organ failure, but no specific organ failures marked present",
   "inc_mv",    "Patient marked as having both invasive MV and NIPPV at inclusion"
-)
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
 
 ## Create empty matrix to hold all potential issues
 ## Rows = # rows in day1_df; columns = # potential issues
@@ -98,4 +106,41 @@ colnames(enrqual_issues) <- enrqual_codes$code
 rownames(enrqual_issues) <- with(day1_df, {
   paste(id, redcap_event_name, sep = '; ') })
 
-## TODO: Check actual issues
+## -- Determine true/false for each potential issue ----------------------------
+## Usual format: `df_issues[, "issue_name"] <- [condition]`
+
+## Date met inclusion criteria: must be present, within range of 3/1/2017-today
+enrqual_issues[, "inc_date"] <- with(day1_df, {
+  is.na(incl_dttm) |
+  incl_dttm < as.Date("2017-03-01") |
+    incl_dttm > Sys.Date()
+})
+
+## Inclusion criteria: All three must be present and yes to enroll
+enrqual_issues[, "inc_adult"] <- with(day1_df, {
+  is.na(adult_random) | !(adult_random == "Yes")
+})
+enrqual_issues[, "inc_icu"] <- with(day1_df, {
+  is.na(in_icu_random) | !(in_icu_random == "Yes")
+})
+enrqual_issues[, "inc_organ"] <- with(day1_df, {
+  is.na(organ_fail) | !(organ_fail == "Yes")
+})
+
+## If organ failure present at inclusion, at least one type must be present
+enrqual_issues[, "inc_organ_present"] <- with(day1_df, {
+  organ_fail == "Yes" &
+    rowSums(
+      !is.na(day1_df[, grep("^organ\\_fail\\_present\\_[0-9]$", names(day1_df))])
+    ) == 0
+})
+
+## Patient cannot be on both invasive and noninvasive ventilation
+enrqual_issues[, "inc_mv"] <- with(day1_df, {
+  !is.na(organ_fail_present_1) & !is.na(organ_fail_present_2)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+enrqual_errors <- create_error_df(
+  error_matrix = enrqual_issues, error_codes = as.data.frame(enrqual_codes)
+)
