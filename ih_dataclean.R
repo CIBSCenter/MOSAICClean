@@ -370,7 +370,39 @@ prehosp_codes <- tribble(
   "gq_illicit_now",     "Missing drug(s) patient is currently using",
   "gq_illicit_now_other", "Missing explanation of other current illicit drugs",
   "gq_illicit_former",  "Missing drug(s) patient formerly used",
-  "gq_illicit_former_other", "Missing explanation of other former illicit drug(s)"
+  "gq_illicit_former_other", "Missing explanation of other former illicit drug(s)",
+  ## -- PASE ---------------------------------------------------------------------
+  ## NOTE: The PASE was added with protocol 1.02
+  "pase_done",         "Missing whether PASE was completed",
+  "pase_rsn",          "Missing reason PASE not completed",
+  "pase_other",        "Missing explanation of other reason PASE not completed",
+  "pase_whom",         "Missing who completed PASE",
+  "pase_leisure",      "Missing PASE leisure activity",
+  "pase_leisure_act",  "Missing description of sitting activities",
+  "pase_leisure_hrs",  "Missing hours per day of sitting activities",
+  "pase_walk",         "Missing PASE walk outside home",
+  "pase_walk_hrs",     "Missing hours per day of walking",
+  "pase_light",        "Missing PASE light sports",
+  "pase_light_act",    "Missing description of light sports activities",
+  "pase_light_hrs",    "Missing hours per day of light sports",
+  "pase_mod",          "Missing PASE moderate sports",
+  "pase_mod_act",      "Missing description of moderate sports activities",
+  "pase_mod_hrs",      "Missing hours per day of moderate sports",
+  "pase_stren",        "Missing PASE strenuous sports",
+  "pase_stren_act",    "Missing description of strenuous sports activities",
+  "pase_stren_hrs",    "Missing hours per day of strenuous sports",
+  "pase_strength",     "Missing PASE strength exercises",
+  "pase_strength_act", "Missing description of strength exercises",
+  "pase_strength_hrs", "Missing hours per day of strength exercises",
+  "pase_house_light",  "Missing PASE light household work",
+  "pase_house_heavy",  "Missing PASE heavy household work",
+  "pase_repairs",      "Missing PASE home repairs",
+  "pase_yard",         "Missing PASE lawn work",
+  "pase_garden",       "Missing PASE outdoor gardening",
+  "pase_caring",       "Missing PASE caregiving",
+  "pase_work",         "Missing PASE work for pay or volunteer",
+  "pase_work_hrs",     "Missing hours per week worked or volunteered",
+  "pase_work_act",     "Missing amount of physical activity for work or volunteering"
 ) %>%
   as.data.frame()
 
@@ -470,7 +502,122 @@ prehosp_issues[, "gq_illicit_former"] <- with(day1_df, {
 prehosp_issues[, "gq_illicit_former_other"] <- with(day1_df, {
   !is.na(gq_illicit_form_5) & is.na(gq_illicit_form_other)
 })
-  
+
+## -- PASE ---------------------------------------------------------------------
+## NOTE: The PASE was added with protocol 1.02
+
+## Was PASE done?
+prehosp_issues[, "pase_done"] <- with(day1_df, {
+  !is.na(protocol) & protocol != "Protocol v1.01" & is.na(pase_comp_ph)
+})
+
+## PASE not done
+prehosp_issues[, "pase_rsn"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & !pase_comp_ph & is.na(pase_comp_ph_rsn)
+})
+prehosp_issues[, "pase_other"] <- with(day1_df, {
+  !is.na(pase_comp_ph_rsn) & pase_comp_ph_rsn == "Other (explain)" &
+    is.na(pase_comp_ph_other)
+})
+
+## PASE done
+prehosp_issues[, "pase_whom"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_who_ph)
+})
+
+prehosp_issues[, "pase_leisure"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_1)
+})
+## Initial question answered seldom, sometimes, or often -> two followups
+prehosp_issues[, "pase_leisure_act"] <- with(day1_df, {
+  !is.na(pase_1) & str_detect(pase_1, "\\(.+\\)$") &
+    (is.na(pase_1a) | pase_1a == "")
+})
+prehosp_issues[, "pase_leisure_hrs"] <- with(day1_df, {
+  !is.na(pase_1) & str_detect(pase_1, "\\(.+\\)$") & is.na(pase_1b)
+})
+
+prehosp_issues[, "pase_walk"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_2)
+})
+prehosp_issues[, "pase_walk_hrs"] <- with(day1_df, {
+  !is.na(pase_2) & str_detect(pase_2, "\\(.+\\)$") & is.na(pase_2a)
+})
+
+prehosp_issues[, "pase_light"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_3)
+})
+prehosp_issues[, "pase_light_act"] <- with(day1_df, {
+  !is.na(pase_3) & str_detect(pase_3, "\\(.+\\)$") &
+    ((is.na(pase_3a) | pase_3a == "") & is.na(pase_3a2))
+})
+prehosp_issues[, "pase_light_hrs"] <- with(day1_df, {
+  !is.na(pase_3) & str_detect(pase_3, "\\(.+\\)$") & is.na(pase_3b)
+})
+
+prehosp_issues[, "pase_mod"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_4)
+})
+prehosp_issues[, "pase_mod_act"] <- with(day1_df, {
+  !is.na(pase_4) & str_detect(pase_4, "\\(.+\\)$") &
+    ((is.na(pase_4a) | pase_4a == "") & is.na(pase_4a2))
+})
+prehosp_issues[, "pase_mod_hrs"] <- with(day1_df, {
+  !is.na(pase_4) & str_detect(pase_4, "\\(.+\\)$") & is.na(pase_4b)
+})
+
+prehosp_issues[, "pase_stren"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_5)
+})
+prehosp_issues[, "pase_stren_act"] <- with(day1_df, {
+  !is.na(pase_5) & str_detect(pase_5, "\\(.+\\)$") &
+    ((is.na(pase_5a) | pase_5a == "") & is.na(pase_5a2))
+})
+prehosp_issues[, "pase_stren_hrs"] <- with(day1_df, {
+  !is.na(pase_5) & str_detect(pase_5, "\\(.+\\)$") & is.na(pase_5b)
+})
+
+prehosp_issues[, "pase_strength"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_6)
+})
+prehosp_issues[, "pase_strength_act"] <- with(day1_df, {
+  !is.na(pase_6) & str_detect(pase_6, "\\(.+\\)$") &
+    ((is.na(pase_6a) | pase_6a == "") & is.na(pase_6a2))
+})
+prehosp_issues[, "pase_strength_hrs"] <- with(day1_df, {
+  !is.na(pase_6) & str_detect(pase_6, "\\(.+\\)$") & is.na(pase_6b)
+})
+
+prehosp_issues[, "pase_house_light"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_7)
+})
+prehosp_issues[, "pase_house_heavy"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_8)
+})
+
+prehosp_issues[, "pase_repairs"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_9a)
+})
+prehosp_issues[, "pase_yard"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_9b)
+})
+prehosp_issues[, "pase_garden"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_9c)
+})
+prehosp_issues[, "pase_caring"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_9d)
+})
+prehosp_issues[, "pase_work"] <- with(day1_df, {
+  !is.na(pase_comp_ph) & pase_comp_ph & is.na(pase_10)
+})
+prehosp_issues[, "pase_work_hrs"] <- with(day1_df, {
+  !is.na(pase_10) & pase_10 == "Yes" &
+    ((is.na(pase_10a) | pase_10a == "") & is.na(pase_10a2))
+})
+prehosp_issues[, "pase_work_act"] <- with(day1_df, {
+  !is.na(pase_10) & pase_10 == "Yes" & is.na(pase_10b)
+})
+
 ## -- Create a final data.frame of errors + messages ---------------------------
 prehosp_errors <- create_error_df(
   error_matrix = prehosp_issues, error_codes = prehosp_codes
