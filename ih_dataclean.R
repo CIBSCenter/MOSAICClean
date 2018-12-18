@@ -80,6 +80,17 @@ day1_df <- post_to_df(
   ## Convert date/time variables to proper formats
   mutate_at(vars(one_of(date_vars)), ymd) %>%
   mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.))) %>%
+  ## Add indicators for whether each pre-hospital assessment was done
+  ##  (could be either fully or partially)
+  mutate_at(
+    vars(one_of(str_subset(names(day1_df), "\\_comp\\_ph$"))),
+    ~ str_detect(., "^Yes")
+  ) %>%
+  ## Add indicators for current, former smoker (could be one or both)
+  mutate(
+    current_smoker = str_detect(tolower(gq_smoke), "current"),
+    former_smoker = str_detect(tolower(gq_smoke), "former")
+  ) %>%
   ## TEMPORARY: Select only patients up till last_pt (set above)
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
@@ -314,6 +325,159 @@ contact_errors <- create_error_df(
 
 contact_final <- bind_rows(contact_missing, contact_errors) %>%
   mutate(form = "Contact Information")
+
+################################################################################
+## Pre-Hospital Function
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+## NOTE: PASE, BDI added in later protocols, should not be present for all pts
+prehosp_missvars <- c(
+  str_subset(names(day1_df), "[^bdi|pase\\_]\\_comp\\_ph$")
+)
+prehosp_missing <- check_missing(
+  df = day1_df, variables = prehosp_missvars, ddict = ih_datadict
+)
+
+## -- Custom checks ------------------------------------------------------------
+## List of checks + messages
+prehosp_codes <- tribble(
+  ~ code,        ~ msg,
+  ## -- General questions ------------------------------------------------------
+  ## Assessment not done
+  "gq_rsn",       "Missing reason general questions not completed",
+  "gq_rsn_other", "Missing explanation of other reason general questions not done",
+  ## Assessment done
+  "gq_whom",            "Missing who completed general questions",
+  "gq_edu",             "Missing years of education",
+  "gq_marital",         "Missing marital status",
+  "gq_living",          "Missing living status",
+  "gq_living_other",    "Missing explanation of other living status",
+  "gq_primary",         "Missing primary dwelling",
+  "gq_primary_other",   "Missing explanation of other primary dwelling",
+  "gq_owned",           "Missing whether primary dwelling is owned",
+  "gq_deaf",            "Missing whether patient is deaf or has difficulty hearing",
+  "gq_blind",           "Missing whether patient is blind or has difficulty seeing",
+  "gq_smoking",         "Missing whether patient is a current or former smoker",
+  "gq_cigday_now",      "Current smoker, but missing current cigarettes per day",
+  "gq_yrssmoke_now",    "Current smoker, but missing current years of smoking",
+  "gq_whenquit",        "Former smoker, but missing date quit",
+  "gq_cigday_former",   "Former smoker, but missing former cigarettes per day",
+  "gq_yrssmoke_former", "Former smoker, but missing former years of smoking",
+  "gq_smokeless",       "Missing whether patient has used smokeless tobacco",
+  "gq_nicotine",        "Missing whether patient uses nicotine replacement therapy",
+  "gq_illicit",         "Missing illicit drug use history",
+  "gq_illicit_now",     "Missing drug(s) patient is currently using",
+  "gq_illicit_now_other", "Missing explanation of other current illicit drugs",
+  "gq_illicit_former",  "Missing drug(s) patient formerly used",
+  "gq_illicit_former_other", "Missing explanation of other former illicit drug(s)"
+) %>%
+  as.data.frame()
+
+## Initialize matrix
+prehosp_issues <- matrix(
+  FALSE, ncol = nrow(prehosp_codes), nrow = nrow(day1_df)
+)
+colnames(prehosp_issues) <- prehosp_codes$code
+rownames(prehosp_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## -- General questions --------------------------------------------------------
+## Questions not done
+prehosp_issues[, "gq_rsn"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph == "No" & is.na(gq_comp_ph_rsn)
+})
+prehosp_issues[, "gq_rsn_other"] <- with(day1_df, {
+  !is.na(gq_comp_ph_rsn) &
+    gq_comp_ph_rsn == "Other (explain)" & is.na(gq_comp_ph_other)
+})
+
+## Questions done
+prehosp_issues[, "gq_whom"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_who_ph)
+})
+
+prehosp_issues[, "gq_edu"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_education)
+})
+prehosp_issues[, "gq_marital"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_marital)
+})
+prehosp_issues[, "gq_living"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_living_status)
+})
+prehosp_issues[, "gq_living_other"] <- with(day1_df, {
+  !is.na(gq_living_status) & gq_living_status == "Other" &
+    is.na(gq_living_status_other)
+})
+prehosp_issues[, "gq_primary"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_pt_dwell)
+})
+prehosp_issues[,"gq_primary_other"] <- with(day1_df, {
+  !is.na(gq_pt_dwell) & gq_pt_dwell == "Other" & is.na(gq_pt_dwell_other)
+})
+prehosp_issues[, "gq_owned"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_dwell_owned)
+})
+prehosp_issues[, "gq_deaf"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_deaf)
+})
+prehosp_issues[, "gq_blind"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_blind)
+})
+prehosp_issues[, "gq_smoking"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_smoke)
+})
+prehosp_issues[, "gq_cigday_now"] <- with(day1_df, {
+  !is.na(gq_smoke) & gq_smoke == "Current only" &
+    is.na(gq_smoke_current_num) & is.na(gq_smoke_current_num_na)
+})
+prehosp_issues[, "gq_yrssmoke_now"] <- with(day1_df, {
+  !is.na(gq_smoke) & gq_smoke == "Current only" &
+    is.na(gq_smoke_current_years) & is.na(gq_smoke_current_years_na)
+})
+prehosp_issues[, "gq_whenquit"] <- with(day1_df, {
+  !is.na(gq_smoke) & gq_smoke == "Former only" &
+    is.na(gq_smoke_former_quit) & is.na(gq_smoke_former_quit_na)
+})
+prehosp_issues[, "gq_cigday_former"] <- with(day1_df, {
+  !is.na(gq_smoke) & gq_smoke == "Former only" &
+    is.na(gq_smoke_former_num) & is.na(gq_smoke_former_num_na)
+})
+prehosp_issues[, "gq_yrssmoke_former"] <- with(day1_df, {
+  !is.na(gq_smoke) & gq_smoke == "Former only" &
+    is.na(gq_smoke_former_years) & is.na(gq_smoke_former_years_na)
+})
+prehosp_issues[, "gq_smokeless"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_tobacco)
+})
+prehosp_issues[, "gq_nicotine"] <- with(day1_df, {
+  !is.na(gq_comp_ph) & gq_comp_ph & is.na(gq_nicotine)
+})
+prehosp_issues[, "gq_illicit"] <-
+  rowSums(!is.na(day1_df[, paste0("gq_illicit_drug_", c(1, 2, 0, 99))])) == 0
+prehosp_issues[, "gq_illicit_now"] <- with(day1_df, {
+  !is.na(gq_illicit_drug_1) &
+    rowSums(!is.na(day1_df[, paste0("gq_illicit_curr_", 1:5)])) == 0
+})
+prehosp_issues[, "gq_illicit_now_other"] <- with(day1_df, {
+  !is.na(gq_illicit_curr_5) & is.na(gq_illicit_curr_other)
+})
+prehosp_issues[, "gq_illicit_former"] <- with(day1_df, {
+  !is.na(gq_illicit_drug_1) &
+    rowSums(!is.na(day1_df[, paste0("gq_illicit_form_", 1:5)])) == 0
+})
+prehosp_issues[, "gq_illicit_former_other"] <- with(day1_df, {
+  !is.na(gq_illicit_form_5) & is.na(gq_illicit_form_other)
+})
+  
+## -- Create a final data.frame of errors + messages ---------------------------
+prehosp_errors <- create_error_df(
+  error_matrix = prehosp_issues, error_codes = prehosp_codes
+)
+
+prehosp_final <- bind_rows(prehosp_missing, prehosp_errors) %>%
+  mutate(form = "Pre-Hospital Function")
 
 ################################################################################
 ## Combine all queries and export to output/ for uploading
