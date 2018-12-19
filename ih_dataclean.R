@@ -402,7 +402,44 @@ prehosp_codes <- tribble(
   "pase_caring",       "Missing PASE caregiving",
   "pase_work",         "Missing PASE work for pay or volunteer",
   "pase_work_hrs",     "Missing hours per week worked or volunteered",
-  "pase_work_act",     "Missing amount of physical activity for work or volunteering"
+  "pase_work_act",     "Missing amount of physical activity for work or volunteering",
+  ## -- Basic/Instrumental Activities of Daily Living --------------------------
+  "biadl_rsn",         "Missing reason BIADL not completed",
+  "biadl_other",       "Missing explanation of other reason BIADL not completed",
+  "biadl_whom",        "Missing who completed BIADL",
+  "biadl_bathe_help",  "Missing BIADL whether patient needed help to bathe",
+  "biadl_bathe_diff",  "Missing BIADL whether patient had difficulty bathing",
+  "biadl_dress_help",  "Missing BIADL whether patient needed help to dress",
+  "biadl_dress_diff",  "Missing BIADL whether patient had difficulty dressing",
+  "biadl_chair_help",  "Missing BIADL whether patient needed help to get in/out of chair",
+  "biadl_chair_diff",  "Missing BIADL whether patient had difficulty getting in/out of chair",
+  "biadl_walk_help",   "Missing BIADL whether patient needed help to walk around house",
+  "biadl_walk_diff",   "Missing BIADL whether patient had difficulty walking around house",
+  "biadl_eat_help",    "Missing BIADL whether patient needed help to eat",
+  "biadl_eat_diff",    "Missing BIADL whether patient had difficulty eating",
+  "biadl_groom_help",  "Missing BIADL whether patient needed help to groom",
+  "biadl_groom_diff",  "Missing BIADL whether patient had difficulty grooming",
+  "biadl_toilet_help", "Missing BIADL whether patient needed help to use the toilet",
+  "biadl_toilet_diff", "Missing BIADL whether patient had difficulty toileting",
+  "biadl_qumi_help",   "Missing BIADL whether patient needed help to walk 0.25 mile",
+  "biadl_qumi_diff",   "Missing BIADL whether patient had difficulty walking 0.25 mile",
+  "biadl_stair_help",  "Missing BIADL whether patient needed help to bathe",
+  "biadl_stair_diff",  "Missing BIADL whether patient had difficulty bathing",
+  "biadl_carry_help",  "Missing BIADL whether patient needed help to lift or carry",
+  "biadl_carry_diff",  "Missing BIADL whether patient had difficulty lifting",
+  "biadl_shop_help",   "Missing BIADL whether patient needed help to shop",
+  "biadl_shop_diff",   "Missing BIADL whether patient had difficulty shopping",
+  "biadl_house_help",  "Missing BIADL whether patient needed help with housework",
+  "biadl_house_diff",  "Missing BIADL whether patient had difficulty with housework",
+  "biadl_meal_help",   "Missing BIADL whether patient needed help with meal prep",
+  "biadl_meal_diff",   "Missing BIADL whether patient had difficulty with meal prep",
+  "biadl_meds_help",   "Missing BIADL whether patient needed help with meds",
+  "biadl_meds_diff",   "Missing BIADL whether patient had difficulty with meds",
+  "biadl_money_help",  "Missing BIADL whether patient needed help with finances",
+  "biadl_money_diff",  "Missing BIADL whether patient had difficulty with finances",
+  "biadl_farwalk",     "Missing BIADL how far patient walks on an average day",
+  "biadl_numblocks",   "Missing BIADL number of blocks patient walks on an average day",
+  "biadl_drive",       "Missing BIADL whether patient has driven a car"
 ) %>%
   as.data.frame()
 
@@ -616,6 +653,140 @@ prehosp_issues[, "pase_work_hrs"] <- with(day1_df, {
 })
 prehosp_issues[, "pase_work_act"] <- with(day1_df, {
   !is.na(pase_10) & pase_10 == "Yes" & is.na(pase_10b)
+})
+
+## -- BIADL --------------------------------------------------------------------
+
+## BIADL not done
+prehosp_issues[, "biadl_rsn"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & !adl_comp_ph & is.na(adl_comp_ph_rsn)
+})
+prehosp_issues[, "biadl_other"] <- with(day1_df, {
+  !is.na(adl_comp_ph_rsn) & adl_comp_ph_rsn == "Other (explain)" &
+    is.na(adl_comp_ph_other)
+})
+
+## BIADL done
+prehosp_issues[, "biadl_whom"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_who_ph)
+})
+
+## Most questions have two parts: a) Need help? b) Have difficulty?
+## Part b only filled out if part a = No help needed
+prehosp_issues[, "biadl_bathe_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_1a)
+})
+prehosp_issues[, "biadl_bathe_diff"] <- with(day1_df, {
+  !is.na(adl_1a) & adl_1a == "No help needed" & is.na(adl_1b)
+})
+
+prehosp_issues[, "biadl_dress_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_2a)
+})
+prehosp_issues[, "biadl_dress_diff"] <- with(day1_df, {
+  !is.na(adl_2a) & adl_2a == "No help needed" & is.na(adl_2b)
+})
+
+prehosp_issues[, "biadl_chair_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_3a)
+})
+prehosp_issues[, "biadl_chair_diff"] <- with(day1_df, {
+  !is.na(adl_3a) & adl_3a == "No help needed" & is.na(adl_3b)
+})
+
+prehosp_issues[, "biadl_walk_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_4a)
+})
+prehosp_issues[, "biadl_walk_diff"] <- with(day1_df, {
+  !is.na(adl_4a) & adl_4a == "No help needed" & is.na(adl_4b)
+})
+
+prehosp_issues[, "biadl_eat_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_5a)
+})
+prehosp_issues[, "biadl_eat_diff"] <- with(day1_df, {
+  !is.na(adl_5a) & adl_5a == "No help needed" & is.na(adl_5b)
+})
+
+prehosp_issues[, "biadl_groom_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_6a)
+})
+prehosp_issues[, "biadl_groom_diff"] <- with(day1_df, {
+  !is.na(adl_6a) & adl_6a == "No help needed" & is.na(adl_6b)
+})
+
+prehosp_issues[, "biadl_toilet_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_7a)
+})
+prehosp_issues[, "biadl_toilet_diff"] <- with(day1_df, {
+  !is.na(adl_7a) & adl_7a == "No help needed" & is.na(adl_7b)
+})
+
+prehosp_issues[, "biadl_qumi_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_8a)
+})
+prehosp_issues[, "biadl_qumi_diff"] <- with(day1_df, {
+  !is.na(adl_8a) & adl_8a == "No help needed" & is.na(adl_8b)
+})
+
+prehosp_issues[, "biadl_stair_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_9a)
+})
+prehosp_issues[, "biadl_stair_diff"] <- with(day1_df, {
+  !is.na(adl_9a) & adl_9a == "No help needed" & is.na(adl_9b)
+})
+
+prehosp_issues[, "biadl_carry_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_10a)
+})
+prehosp_issues[, "biadl_carry_diff"] <- with(day1_df, {
+  !is.na(adl_10a) & adl_10a == "No help needed" & is.na(adl_10b)
+})
+
+prehosp_issues[, "biadl_shop_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_11a)
+})
+prehosp_issues[, "biadl_shop_diff"] <- with(day1_df, {
+  !is.na(adl_11a) & adl_11a == "No help needed" & is.na(adl_11b)
+})
+
+prehosp_issues[, "biadl_house_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_12a)
+})
+prehosp_issues[, "biadl_house_diff"] <- with(day1_df, {
+  !is.na(adl_12a) & adl_12a == "No help needed" & is.na(adl_12b)
+})
+
+prehosp_issues[, "biadl_meal_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_13a)
+})
+prehosp_issues[, "biadl_meal_diff"] <- with(day1_df, {
+  !is.na(adl_13a) & adl_13a == "No help needed" & is.na(adl_13b)
+})
+
+prehosp_issues[, "biadl_meds_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_14a)
+})
+prehosp_issues[, "biadl_meds_diff"] <- with(day1_df, {
+  !is.na(adl_14a) & adl_14a == "No help needed" & is.na(adl_14b)
+})
+
+prehosp_issues[, "biadl_money_help"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_15a)
+})
+prehosp_issues[, "biadl_money_diff"] <- with(day1_df, {
+  !is.na(adl_15a) & adl_15a == "No help needed" & is.na(adl_15b)
+})
+
+prehosp_issues[, "biadl_farwalk"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_16)
+})
+prehosp_issues[, "biadl_numblocks"] <- with(day1_df, {
+  !is.na(adl_16) & adl_16 == "More than 1 block" & is.na(adl_16_blocks)
+})
+
+prehosp_issues[, "biadl_drive"] <- with(day1_df, {
+  !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_17)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
