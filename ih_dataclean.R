@@ -439,7 +439,33 @@ prehosp_codes <- tribble(
   "biadl_money_diff",  "Missing BIADL whether patient had difficulty with finances",
   "biadl_farwalk",     "Missing BIADL how far patient walks on an average day",
   "biadl_numblocks",   "Missing BIADL number of blocks patient walks on an average day",
-  "biadl_drive",       "Missing BIADL whether patient has driven a car"
+  "biadl_drive",       "Missing BIADL whether patient has driven a car",
+  ## -- Life Space -------------------------------------------------------------
+  "ls_rsn",           "Missing reason Life Space not completed",
+  "ls_other",         "Missing explanation of other reason Life Space not completed",
+  "ls_whom",          "Missing who completed Life Space",
+  "ls_aids_any",      "Missing LS whether any aids are used",
+  "ls_aids_conflict", "Both none and >=1 aid are marked in LS",
+  "ls_room",          "Missing LS whether patient has been to other room",
+  "ls_room_often",    "Missing LS how often patient visited other room",
+  "ls_room_equip",    "Missing LS whether special equipment needed to get to other room",
+  "ls_room_help",     "Missing LS whether help needed to get to other room",
+  "ls_out",           "Missing LS whether patient has been outside",
+  "ls_out_often",     "Missing LS how often patient went outside",
+  "ls_out_equip",     "Missing LS whether special equipment needed to get outside",
+  "ls_out_help",      "Missing LS whether help needed to get outside",
+  "ls_neigh",         "Missing LS whether patient has been in neighborhood",
+  "ls_neigh_often",   "Missing LS how often patient visited neighborhood",
+  "ls_neigh_equip",   "Missing LS whether special equipment needed to get to neighborhood",
+  "ls_neigh_help",    "Missing LS whether help needed to get to neighborhood",
+  "ls_town",          "Missing LS whether patient has been to town",
+  "ls_town_often",    "Missing LS how often patient visited town",
+  "ls_town_equip",    "Missing LS whether special equipment needed to get to town",
+  "ls_town_help",     "Missing LS whether help needed to get to town",
+  "ls_far",           "Missing LS whether patient has been out of town",
+  "ls_far_often",     "Missing LS how often patient gone out of town",
+  "ls_far_equip",     "Missing LS whether special equipment needed to get out of town",
+  "ls_far_help",      "Missing LS whether help needed to get out of town"
 ) %>%
   as.data.frame()
 
@@ -787,6 +813,96 @@ prehosp_issues[, "biadl_numblocks"] <- with(day1_df, {
 
 prehosp_issues[, "biadl_drive"] <- with(day1_df, {
   !is.na(adl_comp_ph) & adl_comp_ph & is.na(adl_17)
+})
+
+## -- Life Space ---------------------------------------------------------------
+## LS not done
+prehosp_issues[, "ls_rsn"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & !ls_comp_ph & is.na(ls_comp_ph_rsn)
+})
+prehosp_issues[, "ls_other"] <- with(day1_df, {
+  !is.na(ls_comp_ph_rsn) & ls_comp_ph_rsn == "Other (explain)" &
+    is.na(ls_comp_ph_other)
+})
+
+## LS done
+prehosp_issues[, "ls_whom"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_who_ph)
+})
+
+prehosp_issues[, "ls_aids_any"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph &
+    rowSums(!is.na(day1_df[, grep("^ls\\_aid\\_[0-9]+$", names(day1_df))])) == 0
+})
+prehosp_issues[, "ls_aids_conflict"] <- with(day1_df, {
+  !is.na(ls_aid_0) &
+    rowSums(!is.na(day1_df[, grep("^ls\\_aid\\_[1-9][0-9]*$", names(day1_df))])) > 0
+})
+
+## For each space, if Qa is Yes, b-d should be filled out
+prehosp_issues[, "ls_room"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_other_room)
+})
+prehosp_issues[, "ls_room_often"] <- with(day1_df, {
+  !is.na(ls_other_room) & ls_other_room == "Yes" & is.na(ls_other_room_often)
+})
+prehosp_issues[, "ls_room_equip"] <- with(day1_df, {
+  !is.na(ls_other_room) & ls_other_room == "Yes" & is.na(ls_other_room_equip)
+})
+prehosp_issues[, "ls_room_help"] <- with(day1_df, {
+  !is.na(ls_other_room) & ls_other_room == "Yes" & is.na(ls_other_room_help)
+})
+
+prehosp_issues[, "ls_out"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_outside_home)
+})
+prehosp_issues[, "ls_out_often"] <- with(day1_df, {
+  !is.na(ls_outside_home) & ls_outside_home == "Yes" & is.na(ls_outside_home_often)
+})
+prehosp_issues[, "ls_out_equip"] <- with(day1_df, {
+  !is.na(ls_outside_home) & ls_outside_home == "Yes" & is.na(ls_outside_home_equip)
+})
+prehosp_issues[, "ls_out_help"] <- with(day1_df, {
+  !is.na(ls_outside_home) & ls_outside_home == "Yes" & is.na(ls_outside_home_help)
+})
+
+prehosp_issues[, "ls_neigh"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_neighborhood)
+})
+prehosp_issues[, "ls_neigh_often"] <- with(day1_df, {
+  !is.na(ls_neighborhood) & ls_neighborhood == "Yes" & is.na(ls_neighborhood_often)
+})
+prehosp_issues[, "ls_neigh_equip"] <- with(day1_df, {
+  !is.na(ls_neighborhood) & ls_neighborhood == "Yes" & is.na(ls_neighborhood_equip)
+})
+prehosp_issues[, "ls_neigh_help"] <- with(day1_df, {
+  !is.na(ls_neighborhood) & ls_neighborhood == "Yes" & is.na(ls_neighborhood_equip)
+})
+
+prehosp_issues[, "ls_town"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_town)
+})
+prehosp_issues[, "ls_town_often"] <- with(day1_df, {
+  !is.na(ls_town) & ls_town == "Yes" & is.na(ls_town_often)
+})
+prehosp_issues[, "ls_town_equip"] <- with(day1_df, {
+  !is.na(ls_town) & ls_town == "Yes" & is.na(ls_town_equip)
+})
+prehosp_issues[, "ls_town_help"] <- with(day1_df, {
+  !is.na(ls_town) & ls_town == "Yes" & is.na(ls_town_equip)
+})
+
+prehosp_issues[, "ls_far"] <- with(day1_df, {
+  !is.na(ls_comp_ph) & ls_comp_ph & is.na(ls_outside_town)
+})
+prehosp_issues[, "ls_far_often"] <- with(day1_df, {
+  !is.na(ls_outside_town) & ls_outside_town == "Yes" & is.na(ls_outside_town_often)
+})
+prehosp_issues[, "ls_far_equip"] <- with(day1_df, {
+  !is.na(ls_outside_town) & ls_outside_town == "Yes" & is.na(ls_outside_town_equip)
+})
+prehosp_issues[, "ls_far_help"] <- with(day1_df, {
+  !is.na(ls_outside_town) & ls_outside_town == "Yes" & is.na(ls_outside_town_equip)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
