@@ -490,7 +490,28 @@ prehosp_codes <- tribble(
   "audit_7",     "Missing AUDIT question 7",
   "audit_8",     "Missing AUDIT question 8",
   "audit_9",     "Missing AUDIT question 9",
-  "audit_10",    "Missing AUDIT question 10"
+  "audit_10",    "Missing AUDIT question 10",
+  ## -- IQCODE -----------------------------------------------------------------
+  "iqcode_rsn",   "Missing reason IQCODE not completed",
+  "iqcode_other", "Missing explanation of other reason IQCODE not completed",
+  ## IQCODE can *only* be completed by surrogate/caregiver, per validation
+  # "iqcode_whom",  "Missing who completed IQCODE",
+  "iqcode_1",     "Missing IQCODE question 1",
+  "iqcode_2",     "Missing IQCODE question 2",
+  "iqcode_3",     "Missing IQCODE question 3",
+  "iqcode_4",     "Missing IQCODE question 4",
+  "iqcode_5",     "Missing IQCODE question 5",
+  "iqcode_6",     "Missing IQCODE question 6",
+  "iqcode_7",     "Missing IQCODE question 7",
+  "iqcode_8",     "Missing IQCODE question 8",
+  "iqcode_9",     "Missing IQCODE question 9",
+  "iqcode_10",    "Missing IQCODE question 10",
+  "iqcode_11",    "Missing IQCODE question 11",
+  "iqcode_12",    "Missing IQCODE question 12",
+  "iqcode_13",    "Missing IQCODE question 13",
+  "iqcode_14",    "Missing IQCODE question 14",
+  "iqcode_15",    "Missing IQCODE question 15",
+  "iqcode_16",    "Missing IQCODE question 16"
 ) %>%
   as.data.frame()
 
@@ -1017,6 +1038,66 @@ prehosp_issues[, "audit_9"] <- with(day1_df, {
 })
 prehosp_issues[, "audit_10"] <- with(day1_df, {
   !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_10_ph)
+})
+
+## -- IQCODE -------------------------------------------------------------------
+## IQCODE not done
+prehosp_issues[, "iqcode_rsn"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & !iqcode_comp_ph & is.na(iqcode_comp_ph_rsn)
+})
+prehosp_issues[, "iqcode_other"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph_rsn) & iqcode_comp_ph_rsn == "Other (explain)" &
+    is.na(iqcode_comp_ph_other)
+})
+
+## IQCODE done
+prehosp_issues[, "iqcode_1"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_1_ph)
+})
+prehosp_issues[, "iqcode_2"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_2_ph)
+})
+prehosp_issues[, "iqcode_3"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_3_ph)
+})
+prehosp_issues[, "iqcode_4"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_4_ph)
+})
+prehosp_issues[, "iqcode_5"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_5_ph)
+})
+prehosp_issues[, "iqcode_6"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_6_ph)
+})
+prehosp_issues[, "iqcode_7"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_7_ph)
+})
+prehosp_issues[, "iqcode_8"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_8_ph)
+})
+prehosp_issues[, "iqcode_9"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_9_ph)
+})
+prehosp_issues[, "iqcode_10"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_10_ph)
+})
+prehosp_issues[, "iqcode_11"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_11_ph)
+})
+prehosp_issues[, "iqcode_12"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_12_ph)
+})
+prehosp_issues[, "iqcode_13"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_13_ph)
+})
+prehosp_issues[, "iqcode_14"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_14_ph)
+})
+prehosp_issues[, "iqcode_15"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_15_ph)
+})
+prehosp_issues[, "iqcode_16"] <- with(day1_df, {
+  !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_16_ph)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
