@@ -476,7 +476,21 @@ prehosp_codes <- tribble(
   "emp_hrs",           "Missing how many hours worked per week",
   "emp_occ",           "Missing occupation or type of work",
   "emp_occcode",       "Missing occupation code",
-  "emp_occcode_other", "Missing explanation of unclassified occupation code"
+  "emp_occcode_other", "Missing explanation of unclassified occupation code",
+  ## -- AUDIT ------------------------------------------------------------------
+  "audit_rsn",   "Missing reason AUDIT not completed",
+  "audit_other", "Missing explanation of other reason AUDIT not completed",
+  "audit_whom",  "Missing who completed AUDIT",
+  "audit_1",     "Missing AUDIT question 1",
+  "audit_2",     "Patient drinks at least monthly, but missing AUDIT question 2",
+  "audit_3",     "Missing AUDIT question 3",
+  "audit_4",     "Missing AUDIT question 4",
+  "audit_5",     "Missing AUDIT question 5",
+  "audit_6",     "Missing AUDIT question 6",
+  "audit_7",     "Missing AUDIT question 7",
+  "audit_8",     "Missing AUDIT question 8",
+  "audit_9",     "Missing AUDIT question 9",
+  "audit_10",    "Missing AUDIT question 10"
 ) %>%
   as.data.frame()
 
@@ -952,6 +966,57 @@ prehosp_issues[, "emp_occcode"] <- with(day1_df, {
 prehosp_issues[, "emp_occcode_other"] <- with(day1_df, {
   !is.na(emp_occ_ph) & emp_occ_ph == "25. Other not classified above" &
     is.na(emp_occ_other_ph)
+})
+
+## -- AUDIT --------------------------------------------------------------------
+## AUDIT not done
+prehosp_issues[, "audit_rsn"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & !audit_comp_ph & is.na(audit_comp_ph_rsn)
+})
+prehosp_issues[, "audit_other"] <- with(day1_df, {
+  !is.na(audit_comp_ph_rsn) & audit_comp_ph_rsn == "Other (explain)" &
+    is.na(audit_comp_ph_other)
+})
+
+## AUDIT done
+prehosp_issues[, "audit_whom"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_who_ph)
+})
+
+prehosp_issues[, "audit_1"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_1_ph)
+})
+## Q2 only filled out if patient drinks >= monthly
+prehosp_issues[, "audit_2"] <- with(day1_df, {
+  !is.na(audit_1_ph) & audit_1_ph %in% c(
+    "Monthly or less", "2-3 times a week", "2-4 times a month",
+    "4 or more times a week"
+  ) &
+    is.na(audit_2_ph)
+})
+prehosp_issues[, "audit_3"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_3_ph)
+})
+prehosp_issues[, "audit_4"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_4_ph)
+})
+prehosp_issues[, "audit_5"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_5_ph)
+})
+prehosp_issues[, "audit_6"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_6_ph)
+})
+prehosp_issues[, "audit_7"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_7_ph)
+})
+prehosp_issues[, "audit_8"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_8_ph)
+})
+prehosp_issues[, "audit_9"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_9_ph)
+})
+prehosp_issues[, "audit_10"] <- with(day1_df, {
+  !is.na(audit_comp_ph) & audit_comp_ph & is.na(audit_10_ph)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
