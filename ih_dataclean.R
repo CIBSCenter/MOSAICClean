@@ -465,7 +465,18 @@ prehosp_codes <- tribble(
   "ls_far",           "Missing LS whether patient has been out of town",
   "ls_far_often",     "Missing LS how often patient gone out of town",
   "ls_far_equip",     "Missing LS whether special equipment needed to get out of town",
-  "ls_far_help",      "Missing LS whether help needed to get out of town"
+  "ls_far_help",      "Missing LS whether help needed to get out of town",
+  ## -- Employment -------------------------------------------------------------
+  "emp_rsn",           "Missing reason employment questions not completed",
+  "emp_other",         "Missing explanation of other reason employment not completed",
+  "emp_whom",          "Missing who completed employment",
+  "emp_status",        "Missing employment status",
+  "emp_notwork",       "Missing what patient was doing if not working",
+  "emp_ftpt",          "Missing whether employment was full time or part time",
+  "emp_hrs",           "Missing how many hours worked per week",
+  "emp_occ",           "Missing occupation or type of work",
+  "emp_occcode",       "Missing occupation code",
+  "emp_occcode_other", "Missing explanation of unclassified occupation code"
 ) %>%
   as.data.frame()
 
@@ -903,6 +914,44 @@ prehosp_issues[, "ls_far_equip"] <- with(day1_df, {
 })
 prehosp_issues[, "ls_far_help"] <- with(day1_df, {
   !is.na(ls_outside_town) & ls_outside_town == "Yes" & is.na(ls_outside_town_equip)
+})
+
+## -- Employment ---------------------------------------------------------------
+## Employment not done
+prehosp_issues[, "emp_rsn"] <- with(day1_df, {
+  !is.na(emp_comp_ph) & !emp_comp_ph & is.na(emp_comp_ph_rsn)
+})
+prehosp_issues[, "emp_other"] <- with(day1_df, {
+  !is.na(emp_comp_ph_rsn) & emp_comp_ph_rsn == "Other (explain)" &
+    is.na(emp_comp_ph_other)
+})
+
+## Employment done
+prehosp_issues[, "emp_whom"] <- with(day1_df, {
+  !is.na(emp_comp_ph) & emp_comp_ph & is.na(emp_who_ph)
+})
+
+prehosp_issues[, "emp_status"] <- with(day1_df, {
+  !is.na(emp_comp_ph) & emp_comp_ph & is.na(emp_status_ph)
+})
+prehosp_issues[, "emp_notwork"] <- with(day1_df, {
+  !is.na(emp_status_ph) & emp_status_ph == "Not working" & is.na(emp_unemp_ph)
+})
+prehosp_issues[, "emp_ftpt"] <- with(day1_df, {
+  !is.na(emp_status_ph) & emp_status_ph == "Working" & is.na(emp_work_status_ph)
+})
+prehosp_issues[, "emp_hrs"] <- with(day1_df, {
+  !is.na(emp_status_ph) & emp_status_ph == "Working" & is.na(emp_hours_ph)
+})
+prehosp_issues[, "emp_occ"] <- with(day1_df, {
+  !is.na(emp_status_ph) & emp_status_ph == "Working" & is.na(emp_hours_na_ph)
+}) ## `emp_hours_na_ph` is actually free text asking for desc of occupation
+prehosp_issues[, "emp_occcode"] <- with(day1_df, {
+  !is.na(emp_status_ph) & emp_status_ph == "Working" & is.na(emp_occ_ph)
+})
+prehosp_issues[, "emp_occcode_other"] <- with(day1_df, {
+  !is.na(emp_occ_ph) & emp_occ_ph == "25. Other not classified above" &
+    is.na(emp_occ_other_ph)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
