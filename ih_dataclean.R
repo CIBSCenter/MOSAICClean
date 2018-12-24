@@ -554,7 +554,58 @@ prehosp_codes <- tribble(
   "zarit_9",     "Missing Zarit question 9",
   "zarit_10",     "Missing Zarit question 10",
   "zarit_11",     "Missing Zarit question 11",
-  "zarit_12",     "Missing Zarit question 12"
+  "zarit_12",     "Missing Zarit question 12",
+  ## -- Memory/Behavior --------------------------------------------------------
+  "mb_rsn",   "Missing reason Memory/Behavior not completed",
+  "mb_other", "Missing explanation of other reason Memory/Behavior not completed",
+  "mb_1",     "Missing Memory/Behavior question 1, yes or no",
+  "mb_1a",    "Missing Memory/Behavior question 1a, whether bothered",
+  "mb_2",     "Missing Memory/Behavior question 2, yes or no",
+  "mb_2a",    "Missing Memory/Behavior question 2a, whether bothered",
+  "mb_3",     "Missing Memory/Behavior question 3, yes or no",
+  "mb_3a",    "Missing Memory/Behavior question 3a, whether bothered",
+  "mb_4",     "Missing Memory/Behavior question 4, yes or no",
+  "mb_4a",    "Missing Memory/Behavior question 4a, whether bothered",
+  "mb_5",     "Missing Memory/Behavior question 5, yes or no",
+  "mb_5a",    "Missing Memory/Behavior question 5a, whether bothered",
+  "mb_6",     "Missing Memory/Behavior question 6, yes or no",
+  "mb_6a",    "Missing Memory/Behavior question 6a, whether bothered",
+  "mb_7",     "Missing Memory/Behavior question 7, yes or no",
+  "mb_7a",    "Missing Memory/Behavior question 7a, whether bothered",
+  "mb_8",     "Missing Memory/Behavior question 8, yes or no",
+  "mb_8a",    "Missing Memory/Behavior question 8a, whether bothered",
+  "mb_9",     "Missing Memory/Behavior question 9, yes or no",
+  "mb_9a",    "Missing Memory/Behavior question 9a, whether bothered",
+  "mb_10",    "Missing Memory/Behavior question 10, yes or no",
+  "mb_10a",   "Missing Memory/Behavior question 10a, whether bothered",
+  "mb_11",    "Missing Memory/Behavior question 11, yes or no",
+  "mb_11a",   "Missing Memory/Behavior question 11a, whether bothered",
+  "mb_12",    "Missing Memory/Behavior question 12, yes or no",
+  "mb_12a",   "Missing Memory/Behavior question 12a, whether bothered",
+  "mb_13",    "Missing Memory/Behavior question 13, yes or no",
+  "mb_13a",   "Missing Memory/Behavior question 13a, whether bothered",
+  "mb_14",    "Missing Memory/Behavior question 14, yes or no",
+  "mb_14a",   "Missing Memory/Behavior question 14a, whether bothered",
+  "mb_15",    "Missing Memory/Behavior question 15, yes or no",
+  "mb_15a",   "Missing Memory/Behavior question 15a, whether bothered",
+  "mb_16",    "Missing Memory/Behavior question 16, yes or no",
+  "mb_16a",   "Missing Memory/Behavior question 16a, whether bothered",
+  "mb_17",    "Missing Memory/Behavior question 17, yes or no",
+  "mb_17a",   "Missing Memory/Behavior question 17a, whether bothered",
+  "mb_18",    "Missing Memory/Behavior question 18, yes or no",
+  "mb_18a",   "Missing Memory/Behavior question 18a, whether bothered",
+  "mb_19",    "Missing Memory/Behavior question 19, yes or no",
+  "mb_19a",   "Missing Memory/Behavior question 19a, whether bothered",
+  "mb_20",    "Missing Memory/Behavior question 20, yes or no",
+  "mb_20a",   "Missing Memory/Behavior question 20a, whether bothered",
+  "mb_21",    "Missing Memory/Behavior question 21, yes or no",
+  "mb_21a",   "Missing Memory/Behavior question 21a, whether bothered",
+  "mb_22",    "Missing Memory/Behavior question 22, yes or no",
+  "mb_22a",   "Missing Memory/Behavior question 22a, whether bothered",
+  "mb_23",    "Missing Memory/Behavior question 23, yes or no",
+  "mb_23a",   "Missing Memory/Behavior question 23a, whether bothered",
+  "mb_24",    "Missing Memory/Behavior question 24, yes or no",
+  "mb_24a",   "Missing Memory/Behavior question 24a, whether bothered"
 ) %>%
   as.data.frame()
 
@@ -1281,6 +1332,162 @@ prehosp_issues[, "zarit_11"] <- with(day1_df, {
 })
 prehosp_issues[, "zarit_12"] <- with(day1_df, {
   !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_12)
+})
+
+## -- Memory/Behavior ----------------------------------------------------------
+## M/B not done
+prehosp_issues[, "mb_rsn"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & !memory_comp_ph & is.na(memory_comp_ph_rsn)
+})
+prehosp_issues[, "mb_other"] <- with(day1_df, {
+  !is.na(memory_comp_ph_rsn) & memory_comp_ph_rsn == "Other (explain)" &
+    is.na(memory_comp_ph_other)
+})
+
+## Memory/Behavior done
+prehosp_issues[, "mb_1"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_1a)
+})
+prehosp_issues[, "mb_1a"] <- with(day1_df, {
+  !is.na(membehav_1a) & membehav_1a == "Yes" & is.na(membehav_1b)
+})
+prehosp_issues[, "mb_2"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_2a)
+})
+prehosp_issues[, "mb_2a"] <- with(day1_df, {
+  !is.na(membehav_2a) & membehav_2a == "Yes" & is.na(membehav_2b)
+})
+prehosp_issues[, "mb_3"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_3a)
+})
+prehosp_issues[, "mb_3a"] <- with(day1_df, {
+  !is.na(membehav_3a) & membehav_3a == "Yes" & is.na(membehav_3b)
+})
+prehosp_issues[, "mb_4"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_4a)
+})
+prehosp_issues[, "mb_4a"] <- with(day1_df, {
+  !is.na(membehav_4a) & membehav_4a == "Yes" & is.na(membehav_4b)
+})
+prehosp_issues[, "mb_5"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_5a)
+})
+prehosp_issues[, "mb_5a"] <- with(day1_df, {
+  !is.na(membehav_5a) & membehav_5a == "Yes" & is.na(membehav_5b)
+})
+prehosp_issues[, "mb_6"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_6a)
+})
+prehosp_issues[, "mb_6a"] <- with(day1_df, {
+  !is.na(membehav_6a) & membehav_6a == "Yes" & is.na(membehav_6b)
+})
+prehosp_issues[, "mb_7"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_7a)
+})
+prehosp_issues[, "mb_7a"] <- with(day1_df, {
+  !is.na(membehav_7a) & membehav_7a == "Yes" & is.na(membehav_7b)
+})
+prehosp_issues[, "mb_8"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_8a)
+})
+prehosp_issues[, "mb_8a"] <- with(day1_df, {
+  !is.na(membehav_8a) & membehav_8a == "Yes" & is.na(membehav_8b)
+})
+prehosp_issues[, "mb_9"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_9a)
+})
+prehosp_issues[, "mb_9a"] <- with(day1_df, {
+  !is.na(membehav_9a) & membehav_9a == "Yes" & is.na(membehav_9b)
+})
+prehosp_issues[, "mb_10"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_10a)
+})
+prehosp_issues[, "mb_10a"] <- with(day1_df, {
+  !is.na(membehav_10a) & membehav_10a == "Yes" & is.na(membehav_10b)
+})
+prehosp_issues[, "mb_11"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_11a)
+})
+prehosp_issues[, "mb_11a"] <- with(day1_df, {
+  !is.na(membehav_11a) & membehav_11a == "Yes" & is.na(membehav_11b)
+})
+prehosp_issues[, "mb_12"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_12a)
+})
+prehosp_issues[, "mb_12a"] <- with(day1_df, {
+  !is.na(membehav_12a) & membehav_12a == "Yes" & is.na(membehav_12b)
+})
+prehosp_issues[, "mb_13"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_13a)
+})
+prehosp_issues[, "mb_13a"] <- with(day1_df, {
+  !is.na(membehav_13a) & membehav_13a == "Yes" & is.na(membehav_13b)
+})
+prehosp_issues[, "mb_14"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_14a)
+})
+prehosp_issues[, "mb_14a"] <- with(day1_df, {
+  !is.na(membehav_14a) & membehav_14a == "Yes" & is.na(membehav_14b)
+})
+prehosp_issues[, "mb_15"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_15a)
+})
+prehosp_issues[, "mb_15a"] <- with(day1_df, {
+  !is.na(membehav_15a) & membehav_15a == "Yes" & is.na(membehav_15b)
+})
+prehosp_issues[, "mb_16"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_16a)
+})
+prehosp_issues[, "mb_16a"] <- with(day1_df, {
+  !is.na(membehav_16a) & membehav_16a == "Yes" & is.na(membehav_16b)
+})
+prehosp_issues[, "mb_17"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_17a)
+})
+prehosp_issues[, "mb_17a"] <- with(day1_df, {
+  !is.na(membehav_17a) & membehav_17a == "Yes" & is.na(membehav_17b)
+})
+prehosp_issues[, "mb_18"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_18a)
+})
+prehosp_issues[, "mb_18a"] <- with(day1_df, {
+  !is.na(membehav_18a) & membehav_18a == "Yes" & is.na(membehav_18b)
+})
+prehosp_issues[, "mb_19"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_19a)
+})
+prehosp_issues[, "mb_19a"] <- with(day1_df, {
+  !is.na(membehav_19a) & membehav_19a == "Yes" & is.na(membehav_19b)
+})
+prehosp_issues[, "mb_20"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_20a)
+})
+prehosp_issues[, "mb_20a"] <- with(day1_df, {
+  !is.na(membehav_20a) & membehav_20a == "Yes" & is.na(membehav_20b)
+})
+prehosp_issues[, "mb_21"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_21a)
+})
+prehosp_issues[, "mb_21a"] <- with(day1_df, {
+  !is.na(membehav_21a) & membehav_21a == "Yes" & is.na(membehav_21b)
+})
+prehosp_issues[, "mb_22"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_22a)
+})
+prehosp_issues[, "mb_22a"] <- with(day1_df, {
+  !is.na(membehav_22a) & membehav_22a == "Yes" & is.na(membehav_22b)
+})
+prehosp_issues[, "mb_23"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_23a)
+})
+prehosp_issues[, "mb_23a"] <- with(day1_df, {
+  !is.na(membehav_23a) & membehav_23a == "Yes" & is.na(membehav_23b)
+})
+prehosp_issues[, "mb_24"] <- with(day1_df, {
+  !is.na(memory_comp_ph) & memory_comp_ph & is.na(membehav_24a)
+})
+prehosp_issues[, "mb_24a"] <- with(day1_df, {
+  !is.na(membehav_24a) & membehav_24a == "Yes" & is.na(membehav_24b)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
