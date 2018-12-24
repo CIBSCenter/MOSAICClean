@@ -511,7 +511,50 @@ prehosp_codes <- tribble(
   "iqcode_13",    "Missing IQCODE question 13",
   "iqcode_14",    "Missing IQCODE question 14",
   "iqcode_15",    "Missing IQCODE question 15",
-  "iqcode_16",    "Missing IQCODE question 16"
+  "iqcode_16",    "Missing IQCODE question 16",
+  ## -- BDI --------------------------------------------------------------------
+  ## NOTE: The BDI was added with protocol 1.05
+  "bdi_done",  "Missing whether BDI was completed",
+  "bdi_rsn",   "Missing reason BDI not completed",
+  "bdi_other", "Missing explanation of other reason BDI not completed",
+  "bdi_whom",  "Missing who completed BDI",
+  "bdi_1",     "Missing BDI question 1",
+  "bdi_2",     "Missing BDI question 2",
+  "bdi_3",     "Missing BDI question 3",
+  "bdi_4",     "Missing BDI question 4",
+  "bdi_5",     "Missing BDI question 5",
+  "bdi_6",     "Missing BDI question 6",
+  "bdi_7",     "Missing BDI question 7",
+  "bdi_8",     "Missing BDI question 8",
+  "bdi_9",     "Missing BDI question 9",
+  "bdi_10",    "Missing BDI question 10",
+  "bdi_11",    "Missing BDI question 11",
+  "bdi_12",    "Missing BDI question 12",
+  "bdi_13",    "Missing BDI question 13",
+  "bdi_14",    "Missing BDI question 14",
+  "bdi_15",    "Missing BDI question 15",
+  "bdi_16",    "Missing BDI question 16",
+  "bdi_17",    "Missing BDI question 17",
+  "bdi_18",    "Missing BDI question 18",
+  "bdi_19",    "Missing BDI question 19",
+  "bdi_20",    "Missing BDI question 20",
+  "bdi_21",    "Missing BDI question 21",
+  ## -- Zarit ------------------------------------------------------------------
+  "zarit_rsn",   "Missing reason Zarit not completed",
+  "zarit_other", "Missing explanation of other reason Zarit not completed",
+  "zarit_whom",  "Missing who completed Zarit",
+  "zarit_1",     "Missing Zarit question 1",
+  "zarit_2",     "Missing Zarit question 2",
+  "zarit_3",     "Missing Zarit question 3",
+  "zarit_4",     "Missing Zarit question 4",
+  "zarit_5",     "Missing Zarit question 5",
+  "zarit_6",     "Missing Zarit question 6",
+  "zarit_7",     "Missing Zarit question 7",
+  "zarit_8",     "Missing Zarit question 8",
+  "zarit_9",     "Missing Zarit question 9",
+  "zarit_10",     "Missing Zarit question 10",
+  "zarit_11",     "Missing Zarit question 11",
+  "zarit_12",     "Missing Zarit question 12"
 ) %>%
   as.data.frame()
 
@@ -1098,6 +1141,146 @@ prehosp_issues[, "iqcode_15"] <- with(day1_df, {
 })
 prehosp_issues[, "iqcode_16"] <- with(day1_df, {
   !is.na(iqcode_comp_ph) & iqcode_comp_ph & is.na(iqcode_16_ph)
+})
+
+## -- BDI ----------------------------------------------------------------------
+## NOTE: BDI was added with protocol 1.05
+
+## Was BDI done?
+prehosp_issues[, "bdi_done"] <- with(day1_df, {
+  !is.na(protocol) & protocol %in% c(paste0("Protocol v.1.0", c(5))) &
+    is.na(bdi_comp_ph)
+})
+
+## BDI not done
+prehosp_issues[, "bdi_rsn"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & !bdi_comp_ph & is.na(bdi_comp_ph_rsn)
+})
+prehosp_issues[, "bdi_other"] <- with(day1_df, {
+  !is.na(bdi_comp_ph_rsn) & bdi_comp_ph_rsn == "Other (explain)" &
+    is.na(bdi_comp_ph_other)
+})
+
+## BDI done
+prehosp_issues[, "bdi_whom"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_who_ph)
+})
+
+prehosp_issues[, "bdi_1"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_1_ph)
+})
+prehosp_issues[, "bdi_2"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_2_ph)
+})
+prehosp_issues[, "bdi_3"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_3_ph)
+})
+prehosp_issues[, "bdi_4"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_4_ph)
+})
+prehosp_issues[, "bdi_5"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_5_ph)
+})
+prehosp_issues[, "bdi_6"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_6_ph)
+})
+prehosp_issues[, "bdi_7"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_7_ph)
+})
+prehosp_issues[, "bdi_8"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_8_ph)
+})
+prehosp_issues[, "bdi_9"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_9_ph)
+})
+prehosp_issues[, "bdi_10"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_10_ph)
+})
+prehosp_issues[, "bdi_11"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_11_ph)
+})
+prehosp_issues[, "bdi_12"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_12_ph)
+})
+prehosp_issues[, "bdi_13"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_13_ph)
+})
+prehosp_issues[, "bdi_14"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_14_ph)
+})
+prehosp_issues[, "bdi_15"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_15_ph)
+})
+prehosp_issues[, "bdi_16"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_16_ph)
+})
+prehosp_issues[, "bdi_17"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_17_ph)
+})
+prehosp_issues[, "bdi_18"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_18_ph)
+})
+prehosp_issues[, "bdi_19"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_19_ph)
+})
+prehosp_issues[, "bdi_20"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_20_ph)
+})
+prehosp_issues[, "bdi_21"] <- with(day1_df, {
+  !is.na(bdi_comp_ph) & bdi_comp_ph & is.na(bdi_21_ph)
+})
+
+## -- Zarit --------------------------------------------------------------------
+## Zarit not done
+prehosp_issues[, "zarit_rsn"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & !zarit_comp_ph & is.na(zarit_comp_ph_rsn)
+})
+prehosp_issues[, "zarit_other"] <- with(day1_df, {
+  !is.na(zarit_comp_ph_rsn) & zarit_comp_ph_rsn == "Other (explain)" &
+    is.na(zarit_comp_ph_other)
+})
+
+## Zarit done
+prehosp_issues[, "zarit_whom"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph &
+    (is.na(caregiver_ph) | caregiver_ph == "")
+})
+
+prehosp_issues[, "zarit_1"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_1)
+})
+prehosp_issues[, "zarit_2"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_2)
+})
+prehosp_issues[, "zarit_3"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_3)
+})
+prehosp_issues[, "zarit_4"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_4)
+})
+prehosp_issues[, "zarit_5"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_5)
+})
+prehosp_issues[, "zarit_6"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_6)
+})
+prehosp_issues[, "zarit_7"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_7)
+})
+prehosp_issues[, "zarit_8"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_8)
+})
+prehosp_issues[, "zarit_9"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_9)
+})
+prehosp_issues[, "zarit_10"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_10)
+})
+prehosp_issues[, "zarit_11"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_11)
+})
+prehosp_issues[, "zarit_12"] <- with(day1_df, {
+  !is.na(zarit_comp_ph) & zarit_comp_ph & is.na(zarit_12)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
