@@ -1505,7 +1505,8 @@ prehosp_final <- bind_rows(prehosp_missing, prehosp_errors) %>%
 ## Combine all queries into a single data.frame
 error_dfs <- list(
   enrqual_final,
-  contact_final
+  contact_final,
+  prehosp_final
 )
 
 ## Create variables needed to identify specific queries
