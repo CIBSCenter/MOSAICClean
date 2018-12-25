@@ -95,6 +95,38 @@ day1_df <- post_to_df(
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
 
+## Family Capacitation Survey, administered on event 7
+famcap_df <- post_to_df(
+  httr::POST(
+    url = rc_url,
+    body = list(
+      token = Sys.getenv("MOSAIC_IH"),
+      content = "record",   ## export *records*
+      format = "csv",       ## export as *CSV*
+      forms = paste(c("family_capcitation_survery"), collapse = ","),
+      fields = c("id"),     ## additional fields
+      events = "trial_day_7_arm_1", ## study day 7 event only
+      rawOrLabel = "label", ## export factor *labels* vs numeric codes
+      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
+    )
+  )
+) %>%
+  ## Remove any test patients from dataset
+  filter(!str_detect(tolower(id), "test")) %>%
+  ## Add on protocol - family capacitation added with protocol 1.02
+  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
+  ## Add event name for patients with no form done
+  mutate(redcap_event_name = "Trial Day 7") %>%
+  ## Add indicators for whether each survey was done, fully or partially
+  mutate_at(vars(famcap_comp), ~ str_detect(., "^Yes")) %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(
+    as.numeric(ptnum) <= last_pt,
+    ## Also remove any patients on protocol 1.01 - survey not added until 1.02
+    !(!is.na(protocol) & protocol == "Protocol v1.01")
+  )
+
 ################################################################################
 ## Enrollment Qualification Form
 ################################################################################
@@ -1499,6 +1531,114 @@ prehosp_final <- bind_rows(prehosp_missing, prehosp_errors) %>%
   mutate(form = "Pre-Hospital Function")
 
 ################################################################################
+## Family Capacitation Survey (added with protocol 1.02)
+################################################################################
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+famcap_codes <- tribble(
+  ~ code,        ~ msg,
+  "famcap_done", "Protocol >1.01, but missing whether Family Capacitation Survey done",
+  "famcap_rsn",  "Missing reason Family Capacitation Survey not done",
+  "famcap_1",    "Missing Family Capacitation Survey question 1",
+  "famcap_2",    "Missing Family Capacitation Survey question 2",
+  "famcap_3",    "Missing Family Capacitation Survey question 3",
+  "famcap_4",    "Missing Family Capacitation Survey question 4",
+  "famcap_5",    "Missing Family Capacitation Survey question 5",
+  "famcap_6",    "Missing Family Capacitation Survey question 6",
+  "famcap_7",    "Missing Family Capacitation Survey question 7",
+  "famcap_8",    "Missing Family Capacitation Survey question 8",
+  "famcap_9",    "Missing Family Capacitation Survey question 9",
+  "famcap_10",   "Missing Family Capacitation Survey question 10",
+  "famcap_11",   "Missing Family Capacitation Survey question 11",
+  "famcap_12",   "Missing Family Capacitation Survey question 12",
+  "famcap_13",   "Missing Family Capacitation Survey question 13",
+  "famcap_14",   "Missing Family Capacitation Survey question 14",
+  "famcap_15",   "Missing Family Capacitation Survey question 15",
+  "famcap_16",   "Missing Family Capacitation Survey question 16",
+  "famcap_17",   "Missing Family Capacitation Survey question 17"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in day1_df; columns = # potential issues
+famcap_issues <- matrix(
+  FALSE, ncol = nrow(famcap_codes), nrow = nrow(famcap_df)
+)
+colnames(famcap_issues) <- famcap_codes$code
+rownames(famcap_issues) <- with(famcap_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## FCS not done
+famcap_issues[, "famcap_done"] <- with(famcap_df, { is.na(famcap_comp) })
+famcap_issues[, "famcap_rsn"] <- with(famcap_df, {
+  !is.na(famcap_comp) & !famcap_comp & is.na(famcap_comp_rsn)
+})
+
+## FCS done
+famcap_issues[, "famcap_1"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_1)
+})
+famcap_issues[, "famcap_2"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_2)
+})
+famcap_issues[, "famcap_3"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_3)
+})
+famcap_issues[, "famcap_4"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_4)
+})
+famcap_issues[, "famcap_5"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_5)
+})
+famcap_issues[, "famcap_6"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_6)
+})
+famcap_issues[, "famcap_7"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_7)
+})
+famcap_issues[, "famcap_8"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_8)
+})
+famcap_issues[, "famcap_9"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_9)
+})
+famcap_issues[, "famcap_10"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_10)
+})
+famcap_issues[, "famcap_11"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_11)
+})
+famcap_issues[, "famcap_12"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_12)
+})
+famcap_issues[, "famcap_13"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_13)
+})
+famcap_issues[, "famcap_14"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_14)
+})
+famcap_issues[, "famcap_15"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_15)
+})
+famcap_issues[, "famcap_16"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_16)
+})
+famcap_issues[, "famcap_17"] <- with(famcap_df, {
+  !is.na(famcap_comp) & famcap_comp & is.na(famcap_17)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+famcap_errors <- create_error_df(
+  error_matrix = famcap_issues, error_codes = famcap_codes
+)
+
+famcap_final <- famcap_errors %>%
+  mutate(form = "Family Capacitation Survey")
+
+################################################################################
 ## Combine all queries and export to output/ for uploading
 ################################################################################
 
@@ -1506,7 +1646,8 @@ prehosp_final <- bind_rows(prehosp_missing, prehosp_errors) %>%
 error_dfs <- list(
   enrqual_final,
   contact_final,
-  prehosp_final
+  prehosp_final,
+  famcap_final
 )
 
 ## Create variables needed to identify specific queries
