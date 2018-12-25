@@ -48,6 +48,11 @@ dttm_vars <- ih_datadict %>%
   pull(field_name)
 
 ## -- Export data --------------------------------------------------------------
+reconsent_levels <- c(
+  "Yes, agreed to continue (signed ICD)",
+  "No, withdrew from further participation (signed ICD)"
+)
+
 ## Data collected ONLY on day of enrollment
 day1_df <- post_to_df(
   httr::POST(
@@ -86,10 +91,15 @@ day1_df <- post_to_df(
     vars(one_of(str_subset(names(day1_df), "\\_comp\\_ph$"))),
     ~ str_detect(., "^Yes")
   ) %>%
-  ## Add indicators for current, former smoker (could be one or both)
   mutate(
+    ## Indicators for current, former smoker (could be one or both)
     current_smoker = str_detect(tolower(gq_smoke), "current"),
-    former_smoker = str_detect(tolower(gq_smoke), "former")
+    former_smoker = str_detect(tolower(gq_smoke), "former"),
+    ## Indicator for whether patient self- or reconsented at any point
+    pt_consented =
+      (!is.na(reconsent_ph1) & reconsent_ph1 %in% reconsent_levels) |
+      (!is.na(reconsent_ph2) & reconsent_ph2 %in% reconsent_levels) |
+      (!is.na(consent_self) & consent_self == "Yes")
   ) %>%
   ## TEMPORARY: Select only patients up till last_pt (set above)
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
@@ -1529,6 +1539,267 @@ prehosp_errors <- create_error_df(
 
 prehosp_final <- bind_rows(prehosp_missing, prehosp_errors) %>%
   mutate(form = "Pre-Hospital Function")
+
+################################################################################
+## Dates Tracking Form
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+dt_missvars <- c(
+  "enroll_dttm", "consent_self", "vcc_check", "death", "studywd", "hospdis",
+  "dnr", "trach", "accel_rl", "accel_num", "int_num", "noninv_num",
+  "hosp_admin_dttm", "icuadm_1_dttm", "icu_readmit_number"
+)
+dt_missing <- check_missing(
+  df = day1_df, variables = dt_missvars, ddict = ih_datadict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+dt_codes <- tribble(
+  ~ code,      ~ msg,
+  ## -- Consent ----------------------------------------------------------------
+  ## Surrogate
+  "sur_date",        "Missing date of surrogate consent",
+  "sur_contact",     "Missing surrogate consent for contact for future studies",
+  "sur_dna_this",    "Missing surrogate consent for DNA in this study",
+  "sur_dna_future",  "Missing surrogate consent for DNA in future research",
+  "sur_consent_doc", "Surrogate consent document was not uploaded",
+  "sur_icf",         "Missing whether surrogate ICF note filled out in EPIC",
+  ## Self/reconsent
+  "pt_reconsent_ph1",           "Missing whether patient reconsented in hospital",
+  "pt_reconsent_ph1_other",     "Missing explanation for reason patient not reconsented in hospital",
+  "pt_icf",                     "Missing whether patient ICF note filled out in EPIC",
+  "pt_icd_date",                "Missing date patient signed ICD",
+  "pt_contact",                 "Missing patient consent for contact for future studies",
+  "pt_dna_this",                "Missing patient consent for DNA in this study",
+  "pt_dna_future",              "Missing patient consent for DNA in future research",
+  "pt_consent_doc",             "Patient consent document was not uploaded",
+  "pt_reconsent_ph2",           "Missing whether patient was reconsented in follow-up",
+  "pt_reconsent_ph2_other",     "Missing explanation for reason patient not reconsented in follow-up",
+  "pt_reconsent_again",         "Missing whether patient needed consent again on additional form",
+  "pt_reconsent_again_icd",     "Missing date patient signed ICD for reconsent",
+  "pt_reconsent_again_contact", "Missing reconsent for contact for future studies",
+  "pt_reconsent_dna_this",      "Missing reconsent for DNA in this study",
+  "pt_reconsent_dna_future",    "Missing reconsent for DNA in future research",
+  "pt_reconsent_doc",           "Patient reconsent document was not uploaded",
+  ## -- Death ------------------------------------------------------------------
+  "death_epic", "Missing whether EPIC RR form was updated with patient death",
+  "death_dttm", "Missing date and time of patient death",
+  "death_supp", "Missing whether death was due to withdrawal of life support",
+  "death_summ", "Missing summary of death",
+  ## -- Withdrawal -------------------------------------------------------------
+  "wd_epic",          "Missing whether EPIC RR was updated with patient withdrawal",
+  "wd_dttm",          "Missing date and time of withdrawal",
+  "wd_who",           "Missing who withdrew patient",
+  "wd_comm",          "Missing how withdrawal was communicated",
+  "wd_comm_other",    "Missing explanation of other method of communicating withdrawal",
+  "wd_summ",          "Missing summary of withdrawal reason",
+  "wd_writing",       "Missing what patient or surrogate requested in writing for withdrawal",
+  "wd_writing_other", "MIssing explanation of other request for withdrawal",
+  ## -- Discharge --------------------------------------------------------------
+  "hospdis_epic",         "Missing whether EPIC RR was updated with hospital discharge",
+  "hospdis_safety",       "No info about potential safety issues for follow-up (if no known problems, please mark No issues identified)",
+  "hospdis_safety_other", "Missing explanation of other follow-up safety concerns",
+  "hospdis_dttm",         "Missing date and time of discharge",
+  "hospdis_cg",           "Missing whether primary caregiver changed from Pre-Hospital Form",
+  "hospdis_cg_new",       "Missing name of new primary caregiver",
+  "hospdis_cg_contact",   "Missing contact phone for new primary caregiver",
+  "hospdis_dcloc",        "Missing location of hospital discharge",
+  "hospdis_dcloc_other",  "Missing explanation of other hospital discharge location",
+  "hospdis_fac_contact",  "Missing contact information for facility patient discharged to",
+  "hospdis_mvdc",         "Missing whether patient on mechanical ventilation at discharge"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in day1_df; columns = # potential issues
+dt_issues <- matrix(
+  FALSE, ncol = nrow(dt_codes), nrow = nrow(day1_df)
+)
+colnames(dt_issues) <- dt_codes$code
+rownames(dt_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## -- Consent ------------------------------------------------------------------
+## Surrogate
+dt_issues[, "sur_date"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_date)
+})
+dt_issues[, "sur_contact"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_study)
+})
+dt_issues[, "sur_dna_this"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_dna_1)
+})
+dt_issues[, "sur_dna_future"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_dna_2)
+})
+dt_issues[, "sur_consent_doc"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_upload)
+})
+dt_issues[, "sur_icf"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(icf_chart_reminder_1)
+})
+
+## Self/reconsent
+dt_issues[, "pt_reconsent_ph1"] <- with(day1_df, {
+  !is.na(consent_self) & consent_self == "No" & is.na(reconsent_ph1)
+})
+dt_issues[, "pt_reconsent_ph1_other"] <- with(day1_df, {
+  !is.na(reconsent_ph1) & reconsent_ph1 == "No, other (explain)" &
+    (is.na(reconsent_ph1_other) | reconsent_ph1_other == "")
+})
+dt_issues[, "pt_icf"] <- with(day1_df, {
+  pt_consented & is.na(reconsent_ph1_starpanel_1)
+})
+dt_issues[, "pt_icd_date"] <- with(day1_df, {
+  pt_consented & is.na(pt_consent_date)
+})
+dt_issues[, "pt_contact"] <- with(day1_df, {
+  pt_consented & is.na(pt_consent_study)
+})
+dt_issues[, "pt_dna_this"] <- with(day1_df, {
+  pt_consented & is.na(pt_consent_dna_1)
+})
+dt_issues[, "pt_dna_future"] <- with(day1_df, {
+  pt_consented & is.na(pt_consent_dna_2)
+})
+dt_issues[, "pt_consent_doc"] <- with(day1_df, {
+  pt_consented & is.na(pt_consent_upload)
+})
+dt_issues[, "pt_reconsent_ph2"] <- with(day1_df, {
+  !is.na(reconsent_ph1) &
+    reconsent_ph1 %in% c(
+      "Not able due to cognitive inability", "No, other (explain)"
+    ) & is.na(reconsent_ph2)
+})
+dt_issues[, "pt_reconsent_ph2_other"] <- with(day1_df, {
+  !is.na(reconsent_ph2) & reconsent_ph2 == "No, other (explain)" &
+    (is.na(reconsent_ph2_other) | reconsent_ph2_other == "")
+})
+## If patient reconsented during follow-up they might need to reconsent again?
+dt_issues[, "pt_reconsent_again"] <- with(day1_df, {
+  !is.na(reconsent_ph2) &
+    reconsent_ph2 == "Yes, agreed to continue (signed ICD)" &
+    is.na(reconsent_again_ph2)
+})
+dt_issues[, "pt_reconsent_again_icd"] <- with(day1_df, {
+  !is.na(reconsent_again_ph2) & reconsent_again_ph2 == "Yes" &
+    is.na(reconsent_again_ph2_date)
+})
+dt_issues[, "pt_reconsent_again_contact"] <- with(day1_df, {
+  !is.na(reconsent_again_ph2) & reconsent_again_ph2 == "Yes" &
+    is.na(reconsent_again_ph2_study)
+})
+dt_issues[, "pt_reconsent_dna_this"] <- with(day1_df, {
+  !is.na(reconsent_again_ph2) & reconsent_again_ph2 == "Yes" &
+    is.na(reconsent_again_ph2_dna_1)
+})
+dt_issues[, "pt_reconsent_dna_future"] <- with(day1_df, {
+  !is.na(reconsent_again_ph2) & reconsent_again_ph2 == "Yes" &
+    is.na(reconsent_again_ph2_dna_2)
+})
+dt_issues[, "pt_reconsent_doc"] <- with(day1_df, {
+  !is.na(reconsent_again_ph2) & reconsent_again_ph2 == "Yes" &
+    is.na(reconsent_again_ph2_form)
+})
+
+## -- Death --------------------------------------------------------------------
+dt_issues[, "death_epic"] <- with(day1_df, {
+  !is.na(death) & death == "Yes" & is.na(death_starpanel_1)
+})
+dt_issues[, "death_dttm"] <- with(day1_df, {
+  !is.na(death) & death == "Yes" & is.na(death_dttm)
+})
+dt_issues[, "death_supp"] <- with(day1_df, {
+  !is.na(death) & death == "Yes" & is.na(death_wdtrt)
+})
+dt_issues[, "death_summ"] <- with(day1_df, {
+  !is.na(death) & death == "Yes" & (is.na(death_summary) | death_summary == "")
+})
+
+## -- Withdrawal ---------------------------------------------------------------
+dt_issues[, "wd_epic"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" & is.na(studywd_starpanel_1)
+})
+dt_issues[, "wd_dttm"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" & is.na(studywd_dttm)
+})
+dt_issues[, "wd_who"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" & is.na(studywd_who)
+})
+dt_issues[, "wd_comm"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" & is.na(studywd_how)
+})
+dt_issues[, "wd_comm_other"] <- with(day1_df, {
+  !is.na(studywd_how) & studywd_how == "Other" &
+    (is.na(studywd_other) | studywd_other == "")
+})
+dt_issues[, "wd_summ"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" & (is.na(studywd_rsn) | studywd_rsn == "")
+})
+dt_issues[, "wd_writing"] <- with(day1_df, {
+  !is.na(studywd) & studywd == "Yes" &
+    rowSums(!is.na(day1_df[, grep("^studywd\\_writing\\_[0-9]+$", names(day1_df))])) == 0
+})
+dt_issues[, "wd_writing_other"] <- with(day1_df, {
+  !is.na(studywd_writing_5) &
+    (is.na(studywd_writing_other) | studywd_writing_other == "")
+})
+
+## -- Discharge ----------------------------------------------------------------
+dt_issues[, "hospdis_epic"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_starpanel_1)
+})
+dt_issues[, "hospdis_safety"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" &
+    rowSums(!is.na(day1_df[, grep("^fu\\_safety\\_[0-9]+$", names(day1_df))])) == 0
+})
+dt_issues[, "hospdis_safety_other"] <- with(day1_df, {
+  !is.na(fu_safety_7) & (is.na(fu_safety_explain) | fu_safety_explain == "")
+})
+dt_issues[, "hospdis_dttm"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_dttm)
+})
+dt_issues[, "hospdis_cg"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_primary_change)
+})
+dt_issues[, "hospdis_cg_new"] <- with(day1_df, {
+  !is.na(hospdis_primary_change) & hospdis_primary_change == "Yes" &
+    (is.na(hospdis_primary_name) | hospdis_primary_name == "")
+})
+dt_issues[, "hospdis_cg_contact"] <- with(day1_df, {
+  !is.na(hospdis_primary_change) & hospdis_primary_change == "Yes" &
+    (is.na(hospdis_primary_phone) | hospdis_primary_phone == "")
+})
+dt_issues[, "hospdis_dcloc"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_loc)
+})
+dt_issues[, "hospdis_dcloc_other"] <- with(day1_df, {
+  !is.na(hospdis_loc) & hospdis_loc == "Other" &
+    (is.na(hospdis_loc_other) | hospdis_loc_other == "")
+})
+dt_issues[, "hospdis_fac_contact"] <- with(day1_df, {
+  !is.na(hospdis_loc) & hospdis_loc != "Home" &
+    (is.na(hospdc_info) | hospdc_info == "")
+})
+dt_issues[, "hospdis_mvdc"] <- with(day1_df, {
+  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_vent)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+dt_errors <- create_error_df(
+  error_matrix = dt_issues, error_codes = dt_codes
+)
+
+dt_final <- bind_rows(dt_missing, dt_errors) %>%
+  mutate(form = "Dates Tracking")
 
 ################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
