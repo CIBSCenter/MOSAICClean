@@ -35,13 +35,13 @@ ih_ddict <- httr::POST(
   post_to_df()
 
 ## Get vector of date variables (all export in ISO 8601)
-date_vars <- ih_datadict %>%
+date_vars <- ih_ddict %>%
   filter(
     text_validation_type_or_show_slider_number %in% c("date_mdy", "date_ymd")
   ) %>%
   pull(field_name)
 
-dttm_vars <- ih_datadict %>%
+dttm_vars <- ih_ddict %>%
   filter(
     text_validation_type_or_show_slider_number %in% c("datetime_mdy")
   ) %>%
@@ -88,7 +88,7 @@ day1_df <- post_to_df(
   ## Add indicators for whether each pre-hospital assessment was done
   ##  (could be either fully or partially)
   mutate_at(
-    vars(one_of(str_subset(names(day1_df), "\\_comp\\_ph$"))),
+    vars(one_of(str_subset(names(.), "\\_comp\\_ph$"))),
     ~ str_detect(., "^Yes")
   ) %>%
   mutate(
@@ -292,7 +292,7 @@ contact_missvars <- c(
   "title", "sex", "first_name", "last_name", "name_common", "ssn", "homeless"
 )
 contact_missing <- check_missing(
-  df = day1_df, variables = contact_missvars, ddict = ih_datadict
+  df = day1_df, variables = contact_missvars, ddict = ih_ddict
 )
 
 ## -- Custom checks ------------------------------------------------------------
@@ -378,7 +378,7 @@ prehosp_missvars <- c(
   str_subset(names(day1_df), "[^bdi|pase\\_]\\_comp\\_ph$")
 )
 prehosp_missing <- check_missing(
-  df = day1_df, variables = prehosp_missvars, ddict = ih_datadict
+  df = day1_df, variables = prehosp_missvars, ddict = ih_ddict
 )
 
 ## -- Custom checks ------------------------------------------------------------
@@ -1551,7 +1551,7 @@ dt_missvars <- c(
   "hosp_admin_dttm", "icuadm_1_dttm", "icu_readmit_number"
 )
 dt_missing <- check_missing(
-  df = day1_df, variables = dt_missvars, ddict = ih_datadict
+  df = day1_df, variables = dt_missvars, ddict = ih_ddict
 )
 
 ## -- Create error codes + corresponding messages for all issues *except* ------
@@ -1613,7 +1613,15 @@ dt_codes <- tribble(
   "hospdis_dcloc",        "Missing location of hospital discharge",
   "hospdis_dcloc_other",  "Missing explanation of other hospital discharge location",
   "hospdis_fac_contact",  "Missing contact information for facility patient discharged to",
-  "hospdis_mvdc",         "Missing whether patient on mechanical ventilation at discharge"
+  "hospdis_mvdc",         "Missing whether patient on mechanical ventilation at discharge",
+  ## -- Hospitalization --------------------------------------------------------
+  "coenrolled",    "Missing whether patient was co-enrolled in other studies (check No if none)",
+  "coenr_mends2",  "Co-enrolled in MENDS2, but missing ID",
+  "coenr_mindusa", "Co-enrolled in MINDUSA, but missing ID",
+  "coenr_insight", "Co-enrolled in INSIGHT, but missing ID",
+  "coenr_other",   "Missing explanation of other study co-enrolled in",
+  "dnrdate",       "Missing date and time of DNR or DNI",
+  "trachdate",     "Missing date and time of tracheostomy"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -1791,6 +1799,29 @@ dt_issues[, "hospdis_fac_contact"] <- with(day1_df, {
 })
 dt_issues[, "hospdis_mvdc"] <- with(day1_df, {
   !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_vent)
+})
+
+## -- Hospitalization ----------------------------------------------------------
+dt_issues[, "coenrolled"] <- rowSums(
+  !is.na(day1_df[, grep("^coenroll\\_[0-9]+$", names(day1_df))])
+) == 0
+dt_issues[, "coenr_mends2"] <- with(day1_df, {
+  !is.na(coenroll_6) & is.na(mends2_studyid)
+})
+dt_issues[, "coenr_mindusa"] <- with(day1_df, {
+  !is.na(coenroll_7) & is.na(mindusa_studyid)
+})
+dt_issues[, "coenr_insight"] <- with(day1_df, {
+  !is.na(coenroll_8) & is.na(insight_studyid)
+})
+dt_issues[, "coenr_other"] <- with(day1_df, {
+  !is.na(coenroll_99) & (is.na(coenroll_other) | coenroll_other == "")
+})
+dt_issues[, "dnrdate"] <- with(day1_df, {
+  !is.na(dnr) & dnr == "Yes" & is.na(dnr_dttm)
+})
+dt_issues[, "trachdate"] <- with(day1_df, {
+  !is.na(trach) & trach == "Yes" & is.na(trach_dttm)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
