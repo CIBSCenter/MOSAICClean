@@ -1621,7 +1621,42 @@ dt_codes <- tribble(
   "coenr_insight", "Co-enrolled in INSIGHT, but missing ID",
   "coenr_other",   "Missing explanation of other study co-enrolled in",
   "dnrdate",       "Missing date and time of DNR or DNI",
-  "trachdate",     "Missing date and time of tracheostomy"
+  "trachdate",     "Missing date and time of tracheostomy",
+  ## -- Accelerometer placement ------------------------------------------------
+  "accel_rsn",             "Missing reason accelerometer was never applied",
+  "accel_rsn_other",       "Missing explanation for other reason accelerometer never applied",
+  "accel_wrist_1",         "Missing serial number of wrist accelerometer 1",
+  "accel_wrist_2",         "Missing serial number of wrist accelerometer 2",
+  "accel_wrist_3",         "Missing serial number of wrist accelerometer 3",
+  "accel_wrist_4",         "Missing serial number of wrist accelerometer 4",
+  "accel_ankle_1",         "Missing serial number of ankle accelerometer 1",
+  "accel_ankle_2",         "Missing serial number of ankle accelerometer 2",
+  "accel_ankle_3",         "Missing serial number of ankle accelerometer 3",
+  "accel_ankle_4",         "Missing serial number of ankle accelerometer 4",
+  "accel_init_1",          "Missing date and time of accelerometer initiation 1",
+  "accel_init_2",          "Missing date and time of accelerometer initiation 2",
+  "accel_init_3",          "Missing date and time of accelerometer initiation 3",
+  "accel_init_4",          "Missing date and time of accelerometer initiation 4",
+  "accel_wrist_dc_1",      "Missing whether wrist initiation 1 was discontinued",
+  "accel_wrist_dc_2",      "Missing whether wrist initiation 2 was discontinued",
+  "accel_wrist_dc_3",      "Missing whether wrist initiation 3 was discontinued",
+  "accel_wrist_dc_4",      "Missing whether wrist initiation 4 was discontinued",
+  "accel_wrist_dc_dttm_1", "Missing date and time of wrist discontinuation 1",
+  "accel_wrist_dc_dttm_2", "Missing date and time of wrist discontinuation 2",
+  "accel_wrist_dc_dttm_3", "Missing date and time of wrist discontinuation 3",
+  "accel_wrist_dc_dttm_4", "Missing date and time of wrist discontinuation 4",
+  "accel_ankle_dc_1",      "Missing whether ankle initiation 1 was discontinued",
+  "accel_ankle_dc_2",      "Missing whether ankle initiation 2 was discontinued",
+  "accel_ankle_dc_3",      "Missing whether ankle initiation 3 was discontinued",
+  "accel_ankle_dc_4",      "Missing whether ankle initiation 4 was discontinued",
+  "accel_ankle_dc_dttm_1", "Missing date and time of ankle discontinuation 1",
+  "accel_ankle_dc_dttm_2", "Missing date and time of ankle discontinuation 2",
+  "accel_ankle_dc_dttm_3", "Missing date and time of ankle discontinuation 3",
+  "accel_ankle_dc_dttm_4", "Missing date and time of ankle discontinuation 4",
+  "accel_upload_1",        "Missing whether device data from initiation 1 was uploaded",
+  "accel_upload_2",        "Missing whether device data from initiation 2 was uploaded",
+  "accel_upload_3",        "Missing whether device data from initiation 3 was uploaded",
+  "accel_upload_4",        "Missing whether device data from initiation 4 was uploaded"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -1822,6 +1857,119 @@ dt_issues[, "dnrdate"] <- with(day1_df, {
 })
 dt_issues[, "trachdate"] <- with(day1_df, {
   !is.na(trach) & trach == "Yes" & is.na(trach_dttm)
+})
+
+## -- Accelerometers -----------------------------------------------------------
+dt_issues[, "accel_rsn"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num == 0 & is.na(accel_never_rsn)
+})
+dt_issues[, "accel_rsn_other"] <- with(day1_df, {
+  !is.na(accel_never_rsn) & accel_never_rsn == "Other (explain)" &
+    (is.na(accel_never_other) | accel_never_other == "")
+})
+
+## Initiation 1
+dt_issues[, "accel_wrist_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(accel_wrist_1)
+})
+dt_issues[, "accel_wrist_dc_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(wrist_disc_yn_1)
+})
+dt_issues[, "accel_wrist_dc_dttm_1"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_1) & is.na(wrist_disc_dttm_1)
+})
+dt_issues[, "accel_ankle_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(accel_ankle_1)
+})
+dt_issues[, "accel_ankle_dc_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(ankle_disc_yn_1)
+})
+dt_issues[, "accel_ankle_dc_dttm_1"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_1) & is.na(ankle_disc_dttm_1)
+})
+dt_issues[, "accel_init_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(accel_int_dttm_1)
+})
+dt_issues[, "accel_upload_1"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 1 & is.na(upload_data_1_1)
+})
+
+## Initiation 2
+dt_issues[, "accel_wrist_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(accel_wrist_2)
+})
+dt_issues[, "accel_wrist_dc_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(wrist_disc_yn_2)
+})
+dt_issues[, "accel_wrist_dc_dttm_2"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_2) & is.na(wrist_disc_dttm_2)
+})
+dt_issues[, "accel_ankle_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(accel_ankle_2)
+})
+dt_issues[, "accel_ankle_dc_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(ankle_disc_yn_2)
+})
+dt_issues[, "accel_ankle_dc_dttm_2"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_2) & is.na(ankle_disc_dttm_2)
+})
+dt_issues[, "accel_init_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(accel_int_dttm_2)
+})
+dt_issues[, "accel_upload_2"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 2 & is.na(upload_data_2_1)
+})
+
+## Initiation 3
+dt_issues[, "accel_wrist_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(accel_wrist_3)
+})
+dt_issues[, "accel_wrist_dc_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(wrist_disc_yn_3)
+})
+dt_issues[, "accel_wrist_dc_dttm_3"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_3) & is.na(wrist_disc_dttm_3)
+})
+dt_issues[, "accel_ankle_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(accel_ankle_3)
+})
+dt_issues[, "accel_ankle_dc_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(ankle_disc_yn_3)
+})
+dt_issues[, "accel_ankle_dc_dttm_3"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_3) & is.na(ankle_disc_dttm_3)
+})
+dt_issues[, "accel_init_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(accel_int_dttm_3)
+})
+dt_issues[, "accel_upload_3"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 3 & is.na(upload_data_3_1)
+})
+
+## Initiation 4
+dt_issues[, "accel_wrist_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(accel_wrist_4)
+})
+dt_issues[, "accel_wrist_dc_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(wrist_disc_yn_4)
+})
+dt_issues[, "accel_wrist_dc_dttm_4"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_4) & is.na(wrist_disc_dttm_4)
+})
+dt_issues[, "accel_ankle_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(accel_ankle_4)
+})
+dt_issues[, "accel_ankle_dc_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(ankle_disc_yn_4)
+})
+dt_issues[, "accel_ankle_dc_dttm_4"] <- with(day1_df, {
+  !is.na(wrist_disc_yn_4) & is.na(ankle_disc_dttm_4)
+})
+dt_issues[, "accel_init_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(accel_int_dttm_4)
+})
+dt_issues[, "accel_upload_4"] <- with(day1_df, {
+  !is.na(accel_num) & accel_num >= 4 & is.na(upload_data_4_1)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
