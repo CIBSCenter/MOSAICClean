@@ -99,7 +99,12 @@ day1_df <- post_to_df(
     pt_consented =
       (!is.na(reconsent_ph1) & reconsent_ph1 %in% reconsent_levels) |
       (!is.na(reconsent_ph2) & reconsent_ph2 %in% reconsent_levels) |
-      (!is.na(consent_self) & consent_self == "Yes")
+      (!is.na(consent_self) & consent_self == "Yes"),
+    ## Indicator for whether patient died *in the hospital*
+    ##  (death is recorded in the same spot whether it occurs in hospital or
+    ##   in follow-up)
+    died_inhosp = !is.na(death) & death == "Yes" &
+      (is.na(hospdis) | hospdis == "No")
   ) %>%
   ## TEMPORARY: Select only patients up till last_pt (set above)
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
@@ -1696,7 +1701,19 @@ dt_codes <- tribble(
   "noninv_dc_dttm_5", "Missing date and time of noninvasive MV discontinuation 5",
   "noninv_dttm_6",    "Missing date and time of noninvasive MV initiation 6",
   "noninv_dc_6",      "Missing whether noninvasive MV initiation 6 discontinued",
-  "noninv_dc_dttm_6", "Missing date and time of noninvasive MV discontinuation 6"
+  "noninv_dc_dttm_6", "Missing date and time of noninvasive MV discontinuation 6",
+  ## -- Hospitalization --------------------------------------------------------
+  "icu_dc_1",  "No death recorded, but patient missing ICU discharge 1",
+  "icu_adm_2", "Missing ICU admission 2 date and time",
+  "icu_dc_2",  "Missing ICU discharge 2 date and time",
+  "icu_adm_3", "Missing ICU admission 3 date and time",
+  "icu_dc_3",  "Missing ICU discharge 3 date and time",
+  "icu_adm_4", "Missing ICU admission 4 date and time",
+  "icu_dc_4",  "Missing ICU discharge 4 date and time",
+  "icu_adm_5", "Missing ICU admission 5 date and time",
+  "icu_dc_5",  "Missing ICU discharge 5 date and time",
+  "icu_adm_6", "Missing ICU admission 6 date and time",
+  "icu_dc_6",  "Missing ICU discharge 6 date and time"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -2136,6 +2153,78 @@ dt_issues[, "noninv_dc_dttm_6"] <- with(day1_df, {
   !is.na(noninv_6_dc) & noninv_6_dc == "Yes" & is.na(noninv_6_dc_dttm)
 })
 
+## -- Hospitalization ----------------------------------------------------------
+dt_issues[, "icu_dc_1"] <- with(day1_df, {
+  ## ICU discharge 1 should be present as long as patient remained alive during
+  ##  hospitalization
+  !died_inhosp & is.na(icudis_1_dttm)
+})
+dt_issues[, "icu_adm_2"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 0 & is.na(icuadm_2_dttm)
+})
+dt_issues[, "icu_dc_2"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 0 &
+    (
+      ## Readmitted at least one additional time
+      icu_readmit_number > 1 |
+        ## Not readmitted, but did not die during hospitalization
+        !died_inhosp
+    ) &
+    is.na(icudis_2_dttm)
+})
+dt_issues[, "icu_adm_3"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 1 & is.na(icuadm_3_dttm)
+})
+dt_issues[, "icu_dc_3"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 1 &
+    (
+      ## Readmitted at least one additional time
+      icu_readmit_number > 2 |
+        ## Not readmitted, but did not die during hospitalization
+        !died_inhosp
+    ) &
+    is.na(icudis_3_dttm)
+})
+dt_issues[, "icu_adm_4"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 2 & is.na(icuadm_4_dttm)
+})
+dt_issues[, "icu_dc_4"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 2 &
+    (
+      ## Readmitted at least one additional time
+      icu_readmit_number > 3 |
+        ## Not readmitted, but did not die during hospitalization
+        !died_inhosp
+    ) &
+    is.na(icudis_4_dttm)
+})
+dt_issues[, "icu_adm_5"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 3 & is.na(icuadm_5_dttm)
+})
+dt_issues[, "icu_dc_5"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 3 &
+    (
+      ## Readmitted at least one additional time
+      icu_readmit_number > 4 |
+        ## Not readmitted, but did not die during hospitalization
+        !died_inhosp
+    ) &
+    is.na(icudis_5_dttm)
+})
+dt_issues[, "icu_adm_6"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 4 & is.na(icuadm_6_dttm)
+})
+dt_issues[, "icu_dc_6"] <- with(day1_df, {
+  !is.na(icu_readmit_number) & icu_readmit_number > 4 &
+    (
+      ## Readmitted at least one additional time
+      icu_readmit_number > 5 |
+        ## Not readmitted, but did not die during hospitalization
+        !died_inhosp
+    ) &
+    is.na(icudis_6_dttm)
+})
+
 ## -- Create a final data.frame of errors + messages ---------------------------
 dt_errors <- create_error_df(
   error_matrix = dt_issues, error_codes = dt_codes
@@ -2261,6 +2350,7 @@ error_dfs <- list(
   enrqual_final,
   contact_final,
   prehosp_final,
+  dt_final,
   famcap_final
 )
 
