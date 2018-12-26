@@ -1656,7 +1656,47 @@ dt_codes <- tribble(
   "accel_upload_1",        "Missing whether device data from initiation 1 was uploaded",
   "accel_upload_2",        "Missing whether device data from initiation 2 was uploaded",
   "accel_upload_3",        "Missing whether device data from initiation 3 was uploaded",
-  "accel_upload_4",        "Missing whether device data from initiation 4 was uploaded"
+  "accel_upload_4",        "Missing whether device data from initiation 4 was uploaded",
+  ## -- Mechanical ventilation -------------------------------------------------
+  ## Invasive
+  "int_dttm_1",    "Missing date and time of invasive MV initiation 1",
+  "int_dc_1",      "Missing whether invasive MV initiation 1 discontinued",
+  "int_dc_dttm_1", "Missing date and time of invasive MV discontinuation 1",
+  "int_dttm_2",    "Missing date and time of invasive MV initiation 2",
+  "int_dc_2",      "Missing whether invasive MV initiation 2 discontinued",
+  "int_dc_dttm_2", "Missing date and time of invasive MV discontinuation 2",
+  "int_dttm_3",    "Missing date and time of invasive MV initiation 3",
+  "int_dc_3",      "Missing whether invasive MV initiation 3 discontinued",
+  "int_dc_dttm_3", "Missing date and time of invasive MV discontinuation 3",
+  "int_dttm_4",    "Missing date and time of invasive MV initiation 4",
+  "int_dc_4",      "Missing whether invasive MV initiation 4 discontinued",
+  "int_dc_dttm_4", "Missing date and time of invasive MV discontinuation 4",
+  "int_dttm_5",    "Missing date and time of invasive MV initiation 5",
+  "int_dc_5",      "Missing whether invasive MV initiation 5 discontinued",
+  "int_dc_dttm_5", "Missing date and time of invasive MV discontinuation 5",
+  "int_dttm_6",    "Missing date and time of invasive MV initiation 6",
+  "int_dc_6",      "Missing whether invasive MV initiation 6 discontinued",
+  ## Actually no variable for extubation 6?
+  # "int_dc_dttm_6", "Missing date and time of invasive MV discontinuation 6",
+  ## Noninvasive
+  "noninv_dttm_1",    "Missing date and time of noninvasive MV initiation 1",
+  "noninv_dc_1",      "Missing whether noninvasive MV initiation 1 discontinued",
+  "noninv_dc_dttm_1", "Missing date and time of noninvasive MV discontinuation 1",
+  "noninv_dttm_2",    "Missing date and time of noninvasive MV initiation 2",
+  "noninv_dc_2",      "Missing whether noninvasive MV initiation 2 discontinued",
+  "noninv_dc_dttm_2", "Missing date and time of noninvasive MV discontinuation 2",
+  "noninv_dttm_3",    "Missing date and time of noninvasive MV initiation 3",
+  "noninv_dc_3",      "Missing whether noninvasive MV initiation 3 discontinued",
+  "noninv_dc_dttm_3", "Missing date and time of noninvasive MV discontinuation 3",
+  "noninv_dttm_4",    "Missing date and time of noninvasive MV initiation 4",
+  "noninv_dc_4",      "Missing whether noninvasive MV initiation 4 discontinued",
+  "noninv_dc_dttm_4", "Missing date and time of noninvasive MV discontinuation 4",
+  "noninv_dttm_5",    "Missing date and time of noninvasive MV initiation 5",
+  "noninv_dc_5",      "Missing whether noninvasive MV initiation 5 discontinued",
+  "noninv_dc_dttm_5", "Missing date and time of noninvasive MV discontinuation 5",
+  "noninv_dttm_6",    "Missing date and time of noninvasive MV initiation 6",
+  "noninv_dc_6",      "Missing whether noninvasive MV initiation 6 discontinued",
+  "noninv_dc_dttm_6", "Missing date and time of noninvasive MV discontinuation 6"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -1970,6 +2010,130 @@ dt_issues[, "accel_init_4"] <- with(day1_df, {
 })
 dt_issues[, "accel_upload_4"] <- with(day1_df, {
   !is.na(accel_num) & accel_num >= 4 & is.na(upload_data_4_1)
+})
+
+## -- Mechanical ventilation ---------------------------------------------------
+## Invasive
+dt_issues[, "int_dttm_1"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 1 & is.na(int_1_dttm)
+})
+dt_issues[, "int_dc_1"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 1 & is.na(ext_1)
+})
+dt_issues[, "int_dc_dttm_1"] <- with(day1_df, {
+  !is.na(ext_1) & ext_1 == "Yes" & is.na(ext_1_dttm)
+})
+
+dt_issues[, "int_dttm_2"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 2 & is.na(int_2_dttm)
+})
+dt_issues[, "int_dc_2"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 2 & is.na(ext_2)
+})
+dt_issues[, "int_dc_dttm_2"] <- with(day1_df, {
+  !is.na(ext_2) & ext_2 == "Yes" & is.na(ext_2_dttm)
+})
+
+dt_issues[, "int_dttm_3"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 3 & is.na(int_1_dttm)
+})
+dt_issues[, "int_dc_3"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 3 & is.na(ext_3)
+})
+dt_issues[, "int_dc_dttm_3"] <- with(day1_df, {
+  !is.na(ext_3) & ext_3 == "Yes" & is.na(ext_3_dttm)
+})
+
+dt_issues[, "int_dttm_4"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 4 & is.na(int_4_dttm)
+})
+dt_issues[, "int_dc_4"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 4 & is.na(ext_4)
+})
+dt_issues[, "int_dc_dttm_4"] <- with(day1_df, {
+  !is.na(ext_4) & ext_4 == "Yes" & is.na(ext_4_dttm)
+})
+
+dt_issues[, "int_dttm_5"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 5 & is.na(int_5_dttm)
+})
+dt_issues[, "int_dc_5"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 5 & is.na(ext_5)
+})
+dt_issues[, "int_dc_dttm_5"] <- with(day1_df, {
+  !is.na(ext_5) & ext_5 == "Yes" & is.na(ext_5_dttm)
+})
+
+dt_issues[, "int_dttm_6"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 6 & is.na(int_6_dttm)
+})
+dt_issues[, "int_dc_6"] <- with(day1_df, {
+  !is.na(int_num) & int_num >= 6 & is.na(ext_6)
+})
+## Actually no variable for extubation 6?
+# dt_issues[, "int_dc_dttm_6"] <- with(day1_df, {
+#   !is.na(ext_6) & ext_6 == "Yes" & is.na(ext_6_dttm)
+# })
+
+## Noninvasive
+dt_issues[, "noninv_dttm_1"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 1 & is.na(noninv_1_dttm)
+})
+dt_issues[, "noninv_dc_1"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 1 & is.na(noninv_1_dc)
+})
+dt_issues[, "noninv_dc_dttm_1"] <- with(day1_df, {
+  !is.na(noninv_1_dc) & noninv_1_dc == "Yes" & is.na(noninv_1_dc_dttm)
+})
+
+dt_issues[, "noninv_dttm_2"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 2 & is.na(noninv_2_dttm)
+})
+dt_issues[, "noninv_dc_2"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 2 & is.na(noninv_2_dc)
+})
+dt_issues[, "noninv_dc_dttm_2"] <- with(day1_df, {
+  !is.na(noninv_2_dc) & noninv_2_dc == "Yes" & is.na(noninv_2_dc_dttm)
+})
+
+dt_issues[, "noninv_dttm_3"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 3 & is.na(noninv_3_dttm)
+})
+dt_issues[, "noninv_dc_3"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 3 & is.na(noninv_3_dc)
+})
+dt_issues[, "noninv_dc_dttm_3"] <- with(day1_df, {
+  !is.na(noninv_3_dc) & noninv_3_dc == "Yes" & is.na(noninv_3_dc_dttm)
+})
+
+dt_issues[, "noninv_dttm_4"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 4 & is.na(noninv_4_dttm)
+})
+dt_issues[, "noninv_dc_4"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 4 & is.na(noninv_4_dc)
+})
+dt_issues[, "noninv_dc_dttm_4"] <- with(day1_df, {
+  !is.na(noninv_4_dc) & noninv_4_dc == "Yes" & is.na(noninv_4_dc_dttm)
+})
+
+dt_issues[, "noninv_dttm_5"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 5 & is.na(noninv_5_dttm)
+})
+dt_issues[, "noninv_dc_5"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 5 & is.na(noninv_5_dc)
+})
+dt_issues[, "noninv_dc_dttm_5"] <- with(day1_df, {
+  !is.na(noninv_5_dc) & noninv_5_dc == "Yes" & is.na(noninv_5_dc_dttm)
+})
+
+dt_issues[, "noninv_dttm_6"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 6 & is.na(noninv_6_dttm)
+})
+dt_issues[, "noninv_dc_6"] <- with(day1_df, {
+  !is.na(noninv_num) & noninv_num >= 6 & is.na(noninv_6_dc)
+})
+dt_issues[, "noninv_dc_dttm_6"] <- with(day1_df, {
+  !is.na(noninv_6_dc) & noninv_6_dc == "Yes" & is.na(noninv_6_dc_dttm)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
