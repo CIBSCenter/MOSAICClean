@@ -2364,7 +2364,105 @@ nutr_codes <- tribble(
   "day1_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 1",
   "day1_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 1",
   "day1_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 1",
-  "day1_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 1"
+  "day1_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 1",
+  "day2_date",        "Missing date of pre-enrollment day 2",
+  "day2_tpn",         "Missing whether patient received TPN on pre-enrollment day 2",
+  "day2_goal_kcal",   "Missing calorie goal for pre-enrollment day 2",
+  "day2_total_kcal",  "Missing total calories for pre-enrollment day 2",
+  "day2_goal_aa",     "Missing amino acid goal for pre-enrollment day 2",
+  "day2_total_aa",    "Missing amino acid total for pre-enrollment day 2",
+  "day2_tube",        "Missing whether patient received tube feeding on pre-enrollment day 2",
+  "day2_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 2",
+  "day2_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 2",
+  "day2_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 2",
+  "day2_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 2",
+  "day2_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 2",
+  "day2_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 2",
+  "day2_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 2",
+  "day3_date",        "Missing date of pre-enrollment day 3",
+  "day3_tpn",         "Missing whether patient received TPN on pre-enrollment day 3",
+  "day3_goal_kcal",   "Missing calorie goal for pre-enrollment day 3",
+  "day3_total_kcal",  "Missing total calories for pre-enrollment day 3",
+  "day3_goal_aa",     "Missing amino acid goal for pre-enrollment day 3",
+  "day3_total_aa",    "Missing amino acid total for pre-enrollment day 3",
+  "day3_tube",        "Missing whether patient received tube feeding on pre-enrollment day 3",
+  "day3_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 3",
+  "day3_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 3",
+  "day3_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 3",
+  "day3_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 3",
+  "day3_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 3",
+  "day3_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 3",
+  "day3_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 3",
+  "day4_date",        "Missing date of pre-enrollment day 4",
+  "day4_tpn",         "Missing whether patient received TPN on pre-enrollment day 4",
+  "day4_goal_kcal",   "Missing calorie goal for pre-enrollment day 4",
+  "day4_total_kcal",  "Missing total calories for pre-enrollment day 4",
+  "day4_goal_aa",     "Missing amino acid goal for pre-enrollment day 4",
+  "day4_total_aa",    "Missing amino acid total for pre-enrollment day 4",
+  "day4_tube",        "Missing whether patient received tube feeding on pre-enrollment day 4",
+  "day4_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 4",
+  "day4_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 4",
+  "day4_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 4",
+  "day4_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 4",
+  "day4_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 4",
+  "day4_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 4",
+  "day4_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 4",
+  "day5_date",        "Missing date of pre-enrollment day 5",
+  "day5_tpn",         "Missing whether patient received TPN on pre-enrollment day 5",
+  "day5_goal_kcal",   "Missing calorie goal for pre-enrollment day 5",
+  "day5_total_kcal",  "Missing total calories for pre-enrollment day 5",
+  "day5_goal_aa",     "Missing amino acid goal for pre-enrollment day 5",
+  "day5_total_aa",    "Missing amino acid total for pre-enrollment day 5",
+  "day5_tube",        "Missing whether patient received tube feeding on pre-enrollment day 5",
+  "day5_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 5",
+  "day5_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 5",
+  "day5_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 5",
+  "day5_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 5",
+  "day5_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 5",
+  "day5_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 5",
+  "day5_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 5",
+  "day6_date",        "Missing date of pre-enrollment day 6",
+  "day6_tpn",         "Missing whether patient received TPN on pre-enrollment day 6",
+  "day6_goal_kcal",   "Missing calorie goal for pre-enrollment day 6",
+  "day6_total_kcal",  "Missing total calories for pre-enrollment day 6",
+  "day6_goal_aa",     "Missing amino acid goal for pre-enrollment day 6",
+  "day6_total_aa",    "Missing amino acid total for pre-enrollment day 6",
+  "day6_tube",        "Missing whether patient received tube feeding on pre-enrollment day 6",
+  "day6_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 6",
+  "day6_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 6",
+  "day6_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 6",
+  "day6_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 6",
+  "day6_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 6",
+  "day6_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 6",
+  "day6_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 6",
+  "day7_date",        "Missing date of pre-enrollment day 7",
+  "day7_tpn",         "Missing whether patient received TPN on pre-enrollment day 7",
+  "day7_goal_kcal",   "Missing calorie goal for pre-enrollment day 7",
+  "day7_total_kcal",  "Missing total calories for pre-enrollment day 7",
+  "day7_goal_aa",     "Missing amino acid goal for pre-enrollment day 7",
+  "day7_total_aa",    "Missing amino acid total for pre-enrollment day 7",
+  "day7_tube",        "Missing whether patient received tube feeding on pre-enrollment day 7",
+  "day7_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 7",
+  "day7_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 7",
+  "day7_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 7",
+  "day7_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 7",
+  "day7_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 7",
+  "day7_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 7",
+  "day7_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 7",
+  "day8_date",        "Missing date of pre-enrollment day 8",
+  "day8_tpn",         "Missing whether patient received TPN on pre-enrollment day 8",
+  "day8_goal_kcal",   "Missing calorie goal for pre-enrollment day 8",
+  "day8_total_kcal",  "Missing total calories for pre-enrollment day 8",
+  "day8_goal_aa",     "Missing amino acid goal for pre-enrollment day 8",
+  "day8_total_aa",    "Missing amino acid total for pre-enrollment day 8",
+  "day8_tube",        "Missing whether patient received tube feeding on pre-enrollment day 8",
+  "day8_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 8",
+  "day8_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 8",
+  "day8_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 8",
+  "day8_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 8",
+  "day8_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 8",
+  "day8_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 8",
+  "day8_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 8"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
 
@@ -2378,6 +2476,8 @@ rownames(nutr_issues) <- with(day1_df, {
   paste(id, redcap_event_name, sep = '; ') })
 
 nutr_issues[, "days_enroll"] <- is.na(day1_df$nutri_days)
+
+## Day 1
 nutr_issues[, "day1_date"] <- with(day1_df, {
   !is.na(nutri_days) & nutri_days >= 1 & is.na(nutri_pre_1)
 })
@@ -2419,6 +2519,314 @@ nutr_issues[, "day1_tube_type_3"] <- with(day1_df, {
 })
 nutr_issues[, "day1_tube_vol_3"] <- with(day1_df, {
   !is.na(tube_num_1) & tube_num_1 >= 3 & is.na(tube_vol_3_1)
+})
+
+## Day 2
+nutr_issues[, "day2_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 2 & is.na(nutri_pre_2)
+})
+nutr_issues[, "day2_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 2 & is.na(nutri_pre_2_tpn_yn)
+})
+nutr_issues[, "day2_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_2_tpn_yn) & nutri_pre_2_tpn_yn == "Yes" & is.na(tpn_cal_goal_2)
+})
+nutr_issues[, "day2_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_2_tpn_yn) & nutri_pre_2_tpn_yn == "Yes" & is.na(tpn_cal_tot_2)
+})
+nutr_issues[, "day2_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_2_tpn_yn) & nutri_pre_2_tpn_yn == "Yes" & is.na(tpn_goal_amino_2)
+})
+nutr_issues[, "day2_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_2_tpn_yn) & nutri_pre_2_tpn_yn == "Yes" & is.na(tpn_tot_amino_2)
+})
+nutr_issues[, "day2_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 2 & is.na(tube_yn_2)
+})
+nutr_issues[, "day2_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_2) & tube_yn_2 == "Yes" & is.na(tube_num_2)
+})
+nutr_issues[, "day2_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 2 & is.na(tube_type_2_2)
+})
+nutr_issues[, "day2_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 2 & is.na(tube_vol_2_2)
+})
+nutr_issues[, "day2_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 2 & is.na(tube_type_2_2)
+})
+nutr_issues[, "day2_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 2 & is.na(tube_vol_2_2)
+})
+nutr_issues[, "day2_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 3 & is.na(tube_type_3_2)
+})
+nutr_issues[, "day2_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_2) & tube_num_2 >= 3 & is.na(tube_vol_3_2)
+})
+
+## Day 3
+nutr_issues[, "day3_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 3 & is.na(nutri_pre_3)
+})
+nutr_issues[, "day3_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 3 & is.na(nutri_pre_3_tpn_yn)
+})
+nutr_issues[, "day3_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_3_tpn_yn) & nutri_pre_3_tpn_yn == "Yes" & is.na(tpn_cal_goal_3)
+})
+nutr_issues[, "day3_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_3_tpn_yn) & nutri_pre_3_tpn_yn == "Yes" & is.na(tpn_cal_tot_3)
+})
+nutr_issues[, "day3_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_3_tpn_yn) & nutri_pre_3_tpn_yn == "Yes" & is.na(tpn_goal_amino_3)
+})
+nutr_issues[, "day3_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_3_tpn_yn) & nutri_pre_3_tpn_yn == "Yes" & is.na(tpn_tot_amino_3)
+})
+nutr_issues[, "day3_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 3 & is.na(tube_yn_3)
+})
+nutr_issues[, "day3_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_3) & tube_yn_3 == "Yes" & is.na(tube_num_3)
+})
+nutr_issues[, "day3_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 3 & is.na(tube_type_3_3)
+})
+nutr_issues[, "day3_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 3 & is.na(tube_vol_3_3)
+})
+nutr_issues[, "day3_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 2 & is.na(tube_type_2_3)
+})
+nutr_issues[, "day3_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 2 & is.na(tube_vol_2_3)
+})
+nutr_issues[, "day3_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 3 & is.na(tube_type_3_3)
+})
+nutr_issues[, "day3_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_3) & tube_num_3 >= 3 & is.na(tube_vol_3_3)
+})
+
+## Day 4
+nutr_issues[, "day4_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 4 & is.na(nutri_pre_4)
+})
+nutr_issues[, "day4_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 4 & is.na(nutri_pre_4_tpn_yn)
+})
+nutr_issues[, "day4_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_4_tpn_yn) & nutri_pre_4_tpn_yn == "Yes" & is.na(tpn_cal_goal_4)
+})
+nutr_issues[, "day4_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_4_tpn_yn) & nutri_pre_4_tpn_yn == "Yes" & is.na(tpn_cal_tot_4)
+})
+nutr_issues[, "day4_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_4_tpn_yn) & nutri_pre_4_tpn_yn == "Yes" & is.na(tpn_goal_amino_4)
+})
+nutr_issues[, "day4_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_4_tpn_yn) & nutri_pre_4_tpn_yn == "Yes" & is.na(tpn_tot_amino_4)
+})
+nutr_issues[, "day4_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 4 & is.na(tube_yn_4)
+})
+nutr_issues[, "day4_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_4) & tube_yn_4 == "Yes" & is.na(tube_num_4)
+})
+nutr_issues[, "day4_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 4 & is.na(tube_type_1_4)
+})
+nutr_issues[, "day4_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 4 & is.na(tube_vol_1_4)
+})
+nutr_issues[, "day4_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 2 & is.na(tube_type_2_4)
+})
+nutr_issues[, "day4_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 2 & is.na(tube_vol_2_4)
+})
+nutr_issues[, "day4_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 3 & is.na(tube_type_3_4)
+})
+nutr_issues[, "day4_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_4) & tube_num_4 >= 3 & is.na(tube_vol_3_4)
+})
+
+## Day 5
+nutr_issues[, "day5_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 5 & is.na(nutri_pre_5)
+})
+nutr_issues[, "day5_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 5 & is.na(nutri_pre_5_tpn_yn)
+})
+nutr_issues[, "day5_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_5_tpn_yn) & nutri_pre_5_tpn_yn == "Yes" & is.na(tpn_cal_goal_5)
+})
+nutr_issues[, "day5_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_5_tpn_yn) & nutri_pre_5_tpn_yn == "Yes" & is.na(tpn_cal_tot_5)
+})
+nutr_issues[, "day5_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_5_tpn_yn) & nutri_pre_5_tpn_yn == "Yes" & is.na(tpn_goal_amino_5)
+})
+nutr_issues[, "day5_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_5_tpn_yn) & nutri_pre_5_tpn_yn == "Yes" & is.na(tpn_tot_amino_5)
+})
+nutr_issues[, "day5_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 5 & is.na(tube_yn_5)
+})
+nutr_issues[, "day5_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_5) & tube_yn_5 == "Yes" & is.na(tube_num_5)
+})
+nutr_issues[, "day5_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 5 & is.na(tube_type_1_5)
+})
+nutr_issues[, "day5_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 5 & is.na(tube_vol_1_5)
+})
+nutr_issues[, "day5_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 2 & is.na(tube_type_2_5)
+})
+nutr_issues[, "day5_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 2 & is.na(tube_vol_2_5)
+})
+nutr_issues[, "day5_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 3 & is.na(tube_type_3_5)
+})
+nutr_issues[, "day5_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_5) & tube_num_5 >= 3 & is.na(tube_vol_3_5)
+})
+
+## Day 6
+nutr_issues[, "day6_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 6 & is.na(nutri_pre_6)
+})
+nutr_issues[, "day6_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 6 & is.na(nutri_pre_6_tpn_yn)
+})
+nutr_issues[, "day6_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_6_tpn_yn) & nutri_pre_6_tpn_yn == "Yes" & is.na(tpn_cal_goal_6)
+})
+nutr_issues[, "day6_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_6_tpn_yn) & nutri_pre_6_tpn_yn == "Yes" & is.na(tpn_cal_tot_6)
+})
+nutr_issues[, "day6_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_6_tpn_yn) & nutri_pre_6_tpn_yn == "Yes" & is.na(tpn_goal_amino_6)
+})
+nutr_issues[, "day6_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_6_tpn_yn) & nutri_pre_6_tpn_yn == "Yes" & is.na(tpn_tot_amino_6)
+})
+nutr_issues[, "day6_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 6 & is.na(tube_yn_6)
+})
+nutr_issues[, "day6_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_6) & tube_yn_6 == "Yes" & is.na(tube_num_6)
+})
+nutr_issues[, "day6_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 6 & is.na(tube_type_1_6)
+})
+nutr_issues[, "day6_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 6 & is.na(tube_vol_1_6)
+})
+nutr_issues[, "day6_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 2 & is.na(tube_type_2_6)
+})
+nutr_issues[, "day6_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 2 & is.na(tube_vol_2_6)
+})
+nutr_issues[, "day6_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 3 & is.na(tube_type_3_6)
+})
+nutr_issues[, "day6_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_6) & tube_num_6 >= 3 & is.na(tube_vol_3_6)
+})
+
+## Day 7
+nutr_issues[, "day7_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 7 & is.na(nutri_pre_7)
+})
+nutr_issues[, "day7_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 7 & is.na(nutri_pre_7_tpn_yn)
+})
+nutr_issues[, "day7_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_7_tpn_yn) & nutri_pre_7_tpn_yn == "Yes" & is.na(tpn_cal_goal_7)
+})
+nutr_issues[, "day7_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_7_tpn_yn) & nutri_pre_7_tpn_yn == "Yes" & is.na(tpn_cal_tot_7)
+})
+nutr_issues[, "day7_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_7_tpn_yn) & nutri_pre_7_tpn_yn == "Yes" & is.na(tpn_goal_amino_7)
+})
+nutr_issues[, "day7_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_7_tpn_yn) & nutri_pre_7_tpn_yn == "Yes" & is.na(tpn_tot_amino_7)
+})
+nutr_issues[, "day7_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 7 & is.na(tube_yn_7)
+})
+nutr_issues[, "day7_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_7) & tube_yn_7 == "Yes" & is.na(tube_num_7)
+})
+nutr_issues[, "day7_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 7 & is.na(tube_type_1_7)
+})
+nutr_issues[, "day7_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 7 & is.na(tube_vol_1_7)
+})
+nutr_issues[, "day7_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 2 & is.na(tube_type_2_7)
+})
+nutr_issues[, "day7_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 2 & is.na(tube_vol_2_7)
+})
+nutr_issues[, "day7_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 3 & is.na(tube_type_3_7)
+})
+nutr_issues[, "day7_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_7) & tube_num_7 >= 3 & is.na(tube_vol_3_7)
+})
+
+## Day 1
+nutr_issues[, "day8_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 8 & is.na(nutri_pre_8)
+})
+nutr_issues[, "day8_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 8 & is.na(nutri_pre_8_tpn_yn)
+})
+nutr_issues[, "day8_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_8_tpn_yn) & nutri_pre_8_tpn_yn == "Yes" & is.na(tpn_cal_goal_8)
+})
+nutr_issues[, "day8_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_8_tpn_yn) & nutri_pre_8_tpn_yn == "Yes" & is.na(tpn_cal_tot_8)
+})
+nutr_issues[, "day8_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_8_tpn_yn) & nutri_pre_8_tpn_yn == "Yes" & is.na(tpn_goal_amino_8)
+})
+nutr_issues[, "day8_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_8_tpn_yn) & nutri_pre_8_tpn_yn == "Yes" & is.na(tpn_tot_amino_8)
+})
+nutr_issues[, "day8_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 8 & is.na(tube_yn_8)
+})
+nutr_issues[, "day8_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_8) & tube_yn_8 == "Yes" & is.na(tube_num_8)
+})
+nutr_issues[, "day8_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 8 & is.na(tube_type_1_8)
+})
+nutr_issues[, "day8_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 8 & is.na(tube_vol_1_8)
+})
+nutr_issues[, "day8_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 2 & is.na(tube_type_2_8)
+})
+nutr_issues[, "day8_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 2 & is.na(tube_vol_2_8)
+})
+nutr_issues[, "day8_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 3 & is.na(tube_type_3_8)
+})
+nutr_issues[, "day8_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_8) & tube_num_8 >= 3 & is.na(tube_vol_3_8)
 })
 
 ## -- Create a final data.frame of errors + messages ---------------------------
