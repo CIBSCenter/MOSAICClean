@@ -2329,6 +2329,107 @@ enroll_final <- bind_rows(enroll_missing, enroll_errors) %>%
   mutate(form = "Enrollment Data")
 
 ################################################################################
+## Enrollment Nutrition Data
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+nutr_missvars <- c(
+  "mrn", "dob", "gender", "insurance", "workerscomp_insurance", "hispanic",
+  "frailty_scale", "icu_rsn"
+)
+nutr_missing <- check_missing(
+  df = day1_df, variables = nutr_missvars, ddict = ih_ddict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+nutr_codes <- tribble(
+  ~ code,             ~ msg,
+  "days_enroll",      "Missing how many days patient was in the ICU before enrollment",
+  "day1_date",        "Missing date of pre-enrollment day 1",
+  "day1_tpn",         "Missing whether patient received TPN on pre-enrollment day 1",
+  "day1_goal_kcal",   "Missing calorie goal for pre-enrollment day 1",
+  "day1_total_kcal",  "Missing total calories for pre-enrollment day 1",
+  "day1_goal_aa",     "Missing amino acid goal for pre-enrollment day 1",
+  "day1_total_aa",    "Missing amino acid total for pre-enrollment day 1",
+  "day1_tube",        "Missing whether patient received tube feeding on pre-enrollment day 1",
+  "day1_tube_types",  "Missing number of types of tube feeds on pre-enrollment day 1",
+  "day1_tube_type_1", "Missing first type of tube feeding on pre-enrollment day 1",
+  "day1_tube_vol_1",  "Missing first volume of tube feeding on pre-enrollment day 1",
+  "day1_tube_type_2", "Missing second type of tube feeding on pre-enrollment day 1",
+  "day1_tube_vol_2",  "Missing second volume of tube feeding on pre-enrollment day 1",
+  "day1_tube_type_3", "Missing third type of tube feeding on pre-enrollment day 1",
+  "day1_tube_vol_3",  "Missing third volume of tube feeding on pre-enrollment day 1"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in day1_df; columns = # potential issues
+nutr_issues <- matrix(
+  FALSE, ncol = nrow(nutr_codes), nrow = nrow(day1_df)
+)
+colnames(nutr_issues) <- nutr_codes$code
+rownames(nutr_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+nutr_issues[, "days_enroll"] <- is.na(day1_df$nutri_days)
+nutr_issues[, "day1_date"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 1 & is.na(nutri_pre_1)
+})
+nutr_issues[, "day1_tpn"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 1 & is.na(nutri_pre_1_tpn_yn)
+})
+nutr_issues[, "day1_goal_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_1_tpn_yn) & nutri_pre_1_tpn_yn == "Yes" & is.na(tpn_cal_goal_1)
+})
+nutr_issues[, "day1_total_kcal"] <- with(day1_df, {
+  !is.na(nutri_pre_1_tpn_yn) & nutri_pre_1_tpn_yn == "Yes" & is.na(tpn_cal_tot_1)
+})
+nutr_issues[, "day1_goal_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_1_tpn_yn) & nutri_pre_1_tpn_yn == "Yes" & is.na(tpn_goal_amino_1)
+})
+nutr_issues[, "day1_total_aa"] <- with(day1_df, {
+  !is.na(nutri_pre_1_tpn_yn) & nutri_pre_1_tpn_yn == "Yes" & is.na(tpn_tot_amino_1)
+})
+nutr_issues[, "day1_tube"] <- with(day1_df, {
+  !is.na(nutri_days) & nutri_days >= 1 & is.na(tube_yn_1)
+})
+nutr_issues[, "day1_tube_types"] <- with(day1_df, {
+  !is.na(tube_yn_1) & tube_yn_1 == "Yes" & is.na(tube_num_1)
+})
+nutr_issues[, "day1_tube_type_1"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 1 & is.na(tube_type_1_1)
+})
+nutr_issues[, "day1_tube_vol_1"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 1 & is.na(tube_vol_1_1)
+})
+nutr_issues[, "day1_tube_type_2"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 2 & is.na(tube_type_2_1)
+})
+nutr_issues[, "day1_tube_vol_2"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 2 & is.na(tube_vol_2_1)
+})
+nutr_issues[, "day1_tube_type_3"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 3 & is.na(tube_type_3_1)
+})
+nutr_issues[, "day1_tube_vol_3"] <- with(day1_df, {
+  !is.na(tube_num_1) & tube_num_1 >= 3 & is.na(tube_vol_3_1)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+nutr_errors <- create_error_df(
+  error_matrix = nutr_issues, error_codes = nutr_codes
+)
+
+nutr_final <- nutr_errors %>%
+  mutate(form = "Enrollment Nutrition Data")
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
