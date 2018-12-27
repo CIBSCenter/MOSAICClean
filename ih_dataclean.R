@@ -2234,6 +2234,101 @@ dt_final <- bind_rows(dt_missing, dt_errors) %>%
   mutate(form = "Dates Tracking")
 
 ################################################################################
+## Enrollment Data (MDS)
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+enroll_missvars <- c(
+  "mrn", "dob", "gender", "insurance", "workerscomp_insurance", "hispanic",
+  "frailty_scale", "icu_rsn"
+)
+enroll_missing <- check_missing(
+  df = day1_df, variables = enroll_missvars, ddict = ih_ddict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+enroll_codes <- tribble(
+  ~ code,            ~ msg,
+  "medicare",        "Patient on Medicare, but missing number",
+  "race",            "No race indicated",
+  "race_other",      "Missing description of other race",
+  "charlson_none_1", "No conditions marked for Charlson category 1 (check None if none apply)",
+  "charlson_conf_1", "None cannot be marked if at least one condition is marked for Charlson category 1",
+  "charlson_none_2", "No conditions marked for Charlson category 2 (check None if none apply)",
+  "charlson_conf_2", "None cannot be marked if at least one condition is marked for Charlson category 2",
+  "charlson_none_3", "No conditions marked for Charlson category 3 (check None if none apply)",
+  "charlson_conf_3", "None cannot be marked if at least one condition is marked for Charlson category 3",
+  "charlson_none_4", "No conditions marked for Charlson category 4 (check None if none apply)",
+  "charlson_conf_4", "None cannot be marked if at least one condition is marked for Charlson category 4",
+  "apache_none",     "No conditions marked for APACHE organ insufficiency (check None if none apply)",
+  "apache_conf",     "None cannot be marked if at least one condition is marked for APACHE organ insufficiency",
+  "icu_rsn_other",   "Missing description of other ICU admitting diagnosis"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in day1_df; columns = # potential issues
+enroll_issues <- matrix(
+  FALSE, ncol = nrow(enroll_codes), nrow = nrow(day1_df)
+)
+colnames(enroll_issues) <- enroll_codes$code
+rownames(enroll_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+enroll_issues[, "medicare"] <- with(day1_df, {
+  !is.na(insurance) & str_detect(insurance, "Medicare") & is.na(medicare_num)
+})
+enroll_issues[, "race"] <- rowSums(
+  !is.na(day1_df[, grep("^race\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "race_other"] <- with(day1_df, {
+  !is.na(race_14) & (is.na(race_other) | race_other == "")
+})
+enroll_issues[, "charlson_none_1"] <- rowSums(
+  !is.na(day1_df[, grep("^charlson\\_1\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "charlson_conf_1"] <- !is.na(day1_df$charlson_1_0) &
+  rowSums(!is.na(day1_df[, grep("^charlson\\_1\\_[0-9]+$", names(day1_df))])) > 1
+enroll_issues[, "charlson_none_2"] <- rowSums(
+  !is.na(day1_df[, grep("^charlson\\_2\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "charlson_conf_2"] <- !is.na(day1_df$charlson_2_0) &
+  rowSums(!is.na(day1_df[, grep("^charlson\\_2\\_[0-9]+$", names(day1_df))])) > 1
+enroll_issues[, "charlson_none_3"] <- rowSums(
+  !is.na(day1_df[, grep("^charlson\\_3\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "charlson_conf_3"] <- !is.na(day1_df$charlson_3_0) &
+  rowSums(!is.na(day1_df[, grep("^charlson\\_3\\_[0-9]+$", names(day1_df))])) > 1
+enroll_issues[, "charlson_none_4"] <- rowSums(
+  !is.na(day1_df[, grep("^charlson\\_4\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "charlson_conf_4"] <- !is.na(day1_df$charlson_4_0) &
+  rowSums(!is.na(day1_df[, grep("^charlson\\_4\\_[0-9]+$", names(day1_df))])) > 1
+enroll_issues[, "apache_none"] <- rowSums(
+  !is.na(day1_df[, grep("^chronic\\_dis\\_[0-9]+$", names(day1_df))])
+) == 0
+enroll_issues[, "apache_conf"] <- !is.na(day1_df$charlson_1_0) &
+  rowSums(!is.na(day1_df[, grep("^chronic\\_dis\\_[0-9]+$", names(day1_df))])) > 1
+enroll_issues[, "icu_rsn_other"] <- with(day1_df, {
+  !is.na(icu_rsn) & icu_rsn == "Other" &
+    (is.na(icu_rsn_other) | icu_rsn_other == "")
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+enroll_errors <- create_error_df(
+  error_matrix = enroll_issues, error_codes = enroll_codes
+)
+
+enroll_final <- bind_rows(enroll_missing, enroll_errors) %>%
+  mutate(form = "Enrollment Data")
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
@@ -2351,6 +2446,7 @@ error_dfs <- list(
   contact_final,
   prehosp_final,
   dt_final,
+  enroll_final,
   famcap_final
 )
 
