@@ -5,3 +5,5 @@
 .Renviron
 *.html
 output/
+testdata/
+mosaic_codebook.pdf
