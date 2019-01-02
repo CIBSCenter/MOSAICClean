@@ -110,6 +110,47 @@ day1_df <- post_to_df(
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
 
+## Data collected daily throughout study (daily data, PAD, etc)
+daily_df <- post_to_df(
+  httr::POST(
+    url = rc_url,
+    body = list(
+      token = Sys.getenv("MOSAIC_IH"),
+      content = "record",   ## export *records*
+      format = "csv",       ## export as *CSV*
+      ## Export forms collected daily during hospitalization
+      forms = paste(
+        c(
+          "daily_data_collection_form_mds",
+          "daily_pad_assessment",
+          "icu_mobility_scale_form",
+          "accelerometer_bedside_form",
+          "accelerometer_placement_form",
+          "sedline_daily_form",
+          "daily_data_collection_form_extended"
+        ),
+        collapse = ","
+      ),
+      fields = c("id,redcap_event_name"),     ## additional fields
+      rawOrLabel = "label", ## export factor *labels* vs numeric codes
+      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
+    )
+  )
+) %>%
+  ## Remove any test patients from dataset and "Discharge Day" from events
+  ##  (only forms done on Discharge Day are specimens and CADUCEUS; this is
+  ##  easier than listing all other forms in API call above)
+  filter(
+    !str_detect(tolower(id), "test"),
+    !(redcap_event_name == "Discharge Day")
+  ) %>%
+  ## Convert date/time variables to proper formats
+  mutate_at(vars(one_of(date_vars)), ymd) %>%
+  mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.))) %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(as.numeric(ptnum) <= last_pt)
+
 ## Family Capacitation Survey, administered on event 7
 famcap_df <- post_to_df(
   httr::POST(
@@ -141,6 +182,13 @@ famcap_df <- post_to_df(
     ## Also remove any patients on protocol 1.01 - survey not added until 1.02
     !(!is.na(protocol) & protocol == "Protocol v1.01")
   )
+
+## Save dfs to a test data file in case API/wifi aren't working
+redcap_dfs <- str_subset(ls(), "^[a-z,0-9]+\\_df$")
+walk(
+  redcap_dfs,
+  ~ saveRDS(get(.), file = sprintf("testdata/%s.rds", .))
+)
 
 ################################################################################
 ## Enrollment Qualification Form
@@ -2838,6 +2886,213 @@ nutr_final <- nutr_errors %>%
   mutate(form = "Enrollment Nutrition Data")
 
 ################################################################################
+## PAD Form
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+pad_codes <- tribble(
+  ~ code,        ~ msg,
+  "assess_date", "Missing date of PAD assessment",
+  "assess_num",  "Missing number of assessments done today",
+  ## Should be 2 assessments in the ICU and 1 outside the ICU. In the interest
+  ## of time, this check was not incorporated, because it will require lots of
+  ## work with the dates tracking information. This is a place for future
+  ## improvement.
+  ## No assessments done today
+  "assess_none_rass",       "Missing reason RASS not done",
+  "assess_none_rass_other", "Missing explanation for other reason RASS not done",
+  "assess_none_cam",        "Missing reason CAM-ICU not done",
+  "assess_none_cam_other",  "Missing explanation for other reason CAM-ICU not done",
+  "assess_none_cpot",       "Missing reason CPOT not done",
+  "assess_none_cpot_other", "Missing explanation for other reason CPOT not done",
+  ## >=1 assessment done today
+  "assess_1_time",        "Missing time of first assessment",
+  "assess_1_who",         "Missing who completed first PAD assessment",
+  "assess_1_rass",        "Missing RASS from first assessment",
+  "assess_1_rass_nd",     "Missing reason first RASS was not done",
+  "assess_1_rass_other",  "Missing explanation for other reason first RASS not done",
+  "assess_1_rass_target", "Missing first target RASS",
+  "assess_1_cpot",        "Missing CPOT from first assessment",
+  "assess_1_cpot_nd",     "Missing reason first CPOT was not done",
+  "assess_1_cpot_other",  "Missing explanation for other reason first CPOT not done",
+  "assess_1_cam",         "Missing CAM-ICU from first assessment",
+  "assess_1_cam_nd",      "Missing reason first CAM-ICU was not done",
+  "assess_1_cam_f1",      "Missing first CAM-ICU Feature 1",
+  "assess_1_cam_f2",      "Missing first CAM-ICU Feature 2",
+  "assess_1_cam_f4a",     "Missing first CAM-ICU Feature 4a",
+  "assess_1_cam_f4b",     "Missing first CAM-ICU Feature 4b",
+  ## >=2 assessments done today
+  "assess_2_time",        "Missing time of second assessment",
+  "assess_2_who",         "Missing who completed second PAD assessment",
+  "assess_2_rass",        "Missing RASS from second assessment",
+  "assess_2_rass_nd",     "Missing reason second RASS was not done",
+  "assess_2_rass_other",  "Missing explanation for other reason second RASS not done",
+  "assess_2_rass_target", "Missing second target RASS",
+  "assess_2_cpot",        "Missing CPOT from second assessment",
+  "assess_2_cpot_nd",     "Missing reason second CPOT was not done",
+  "assess_2_cpot_other",  "Missing explanation for other reason second CPOT not done",
+  "assess_2_cam",         "Missing CAM-ICU from second assessment",
+  "assess_2_cam_nd",      "Missing reason second CAM-ICU was not done",
+  "assess_2_cam_f1",      "Missing second CAM-ICU Feature 1",
+  "assess_2_cam_f2",      "Missing second CAM-ICU Feature 2",
+  "assess_2_cam_f4a",     "Missing second CAM-ICU Feature 4a",
+  "assess_2_cam_f4b",     "Missing second CAM-ICU Feature 4b"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+pad_issues <- matrix(
+  FALSE, ncol = nrow(pad_codes), nrow = nrow(daily_df)
+)
+colnames(pad_issues) <- pad_codes$code
+rownames(pad_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+pad_issues[, "assess_date"] <- is.na(daily_df$assess_date)
+pad_issues[, "assess_num"] <- is.na(daily_df$assess_number)
+
+## Should be 2 assessments in the ICU and 1 outside the ICU. In the interest
+## of time, this check was not incorporated, because it will require lots of
+## work with the dates tracking information. This is a place for future
+## improvement.
+
+## No assessments done today
+pad_issues[, "assess_none_rass"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number == 0 & is.na(rass_inc_rsn_0)
+})
+pad_issues[, "assess_none_rass"] <- with(daily_df, {
+  !is.na(rass_inc_rsn_0) & rass_inc_rsn_0 == "F. Other (see NTF)" &
+    (is.na(rass_inc_other_0) | rass_inc_other_0 == "")
+})
+pad_issues[, "assess_none_cpot"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number == 0 & is.na(cpot_inc_rsn_0)
+})
+pad_issues[, "assess_none_cpot"] <- with(daily_df, {
+  !is.na(cpot_inc_rsn_0) & cpot_inc_rsn_0 == "F. Other (see NTF)" &
+    (is.na(cpot_inc_other_0) | cpot_inc_other_0 == "")
+})
+pad_issues[, "assess_none_cam"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number == 0 & is.na(cam_inc_rsn_0)
+})
+pad_issues[, "assess_none_cam"] <- with(daily_df, {
+  !is.na(cam_inc_rsn_0) & cam_inc_rsn_0 == "F. Other (see NTF)" &
+    (is.na(cam_inc_other_0) | cam_inc_other_0 == "")
+})
+
+## >=1 assessment done today
+pad_issues[, "assess_1_time"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(assess_dttm_1)
+})
+pad_issues[, "assess_1_who"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(assess_who_1)
+})
+pad_issues[, "assess_1_rass"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(rass_actual_1)
+})
+pad_issues[, "assess_1_rass_nd"] <- with(daily_df, {
+  !is.na(rass_actual_1) & rass_actual_1 == "Not done" & is.na(rass_inc_rsn_1)
+})
+pad_issues[, "assess_1_rass_other"] <- with(daily_df, {
+  !is.na(rass_inc_rsn_1) & rass_inc_rsn_1 == "E. Other (see NTF)" &
+    (is.na(rass_inc_other_1) | rass_inc_other_1 == "")
+})
+pad_issues[, "assess_1_rass_target"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(rass_target_1)
+})
+pad_issues[, "assess_1_cpot"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(cpot_1)
+})
+pad_issues[, "assess_1_cpot_nd"] <- with(daily_df, {
+  !is.na(cpot_1) & cpot_1 == "Not done" & is.na(cpot_inc_rsn_1)
+})
+pad_issues[, "assess_1_cpot_other"] <- with(daily_df, {
+  !is.na(cpot_inc_rsn_1) & cpot_inc_rsn_1 == "E. Other (see NTF)" &
+    (is.na(cpot_inc_other_1) | cpot_inc_other_1 == "")
+})
+pad_issues[, "assess_1_cam"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 1 & is.na(cam_1)
+})
+pad_issues[, "assess_1_cam_nd"] <- with(daily_df, {
+  !is.na(cam_1) & cam_1 == "Not Done" & (is.na(cam_na_1) | cam_na_1 == "")
+})
+pad_issues[, "assess_1_cam_f1"] <- with(daily_df, {
+  !is.na(cam_1) & cam_1 %in% c("Negative", "Postive") & is.na(cam_f1_1)
+})
+pad_issues[, "assess_1_cam_f2"] <- with(daily_df, {
+  !is.na(cam_1) & cam_1 %in% c("Negative", "Postive") & is.na(cam_f2_1)
+})
+pad_issues[, "assess_1_cam_f4a"] <- with(daily_df, {
+  !is.na(cam_1) & cam_1 %in% c("Negative", "Postive") & is.na(cam_f4a_1)
+})
+pad_issues[, "assess_1_cam_f4b"] <- with(daily_df, {
+  !is.na(cam_1) & cam_1 %in% c("Negative", "Postive") & is.na(cam_f4b_1)
+})
+
+## >=2 assessments done today
+pad_issues[, "assess_2_time"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(assess_dttm_2)
+})
+pad_issues[, "assess_2_who"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(assess_who_2)
+})
+pad_issues[, "assess_2_rass"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(rass_actual_2)
+})
+pad_issues[, "assess_2_rass_nd"] <- with(daily_df, {
+  !is.na(rass_actual_2) & rass_actual_2 == "Not done" & is.na(rass_inc_rsn_2)
+})
+pad_issues[, "assess_2_rass_other"] <- with(daily_df, {
+  !is.na(rass_inc_rsn_2) & rass_inc_rsn_2 == "E. Other (see NTF)" &
+    (is.na(rass_inc_other_2) | rass_inc_other_2 == "")
+})
+pad_issues[, "assess_2_rass_target"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(rass_target_2)
+})
+pad_issues[, "assess_2_cpot"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(cpot_2)
+})
+pad_issues[, "assess_2_cpot_nd"] <- with(daily_df, {
+  !is.na(cpot_2) & cpot_2 == "Not done" & is.na(cpot_inc_rsn_2)
+})
+pad_issues[, "assess_2_cpot_other"] <- with(daily_df, {
+  !is.na(cpot_inc_rsn_2) & cpot_inc_rsn_2 == "E. Other (see NTF)" &
+    (is.na(cpot_inc_other_2) | cpot_inc_other_2 == "")
+})
+pad_issues[, "assess_2_cam"] <- with(daily_df, {
+  !is.na(assess_number) & assess_number >= 2 & is.na(cam_2)
+})
+pad_issues[, "assess_2_cam_nd"] <- with(daily_df, {
+  !is.na(cam_2) & cam_2 == "Not Done" & (is.na(cam_na_2) | cam_na_2 == "")
+})
+pad_issues[, "assess_2_cam_f1"] <- with(daily_df, {
+  !is.na(cam_2) & cam_2 %in% c("Negative", "Postive") & is.na(cam_f1_2)
+})
+pad_issues[, "assess_2_cam_f2"] <- with(daily_df, {
+  !is.na(cam_2) & cam_2 %in% c("Negative", "Postive") & is.na(cam_f2_2)
+})
+pad_issues[, "assess_2_cam_f4a"] <- with(daily_df, {
+  !is.na(cam_2) & cam_2 %in% c("Negative", "Postive") & is.na(cam_f4a_2)
+})
+pad_issues[, "assess_2_cam_f4b"] <- with(daily_df, {
+  !is.na(cam_2) & cam_2 %in% c("Negative", "Postive") & is.na(cam_f4b_2)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+pad_errors <- create_error_df(
+  error_matrix = pad_issues, error_codes = pad_codes
+)
+
+pad_final <- pad_errors %>%
+  mutate(form = "Daily PAD Assessment")
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
@@ -2956,6 +3211,7 @@ error_dfs <- list(
   prehosp_final,
   dt_final,
   enroll_final,
+  nutr_final,
   famcap_final
 )
 
