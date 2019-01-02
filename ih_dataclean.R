@@ -3199,7 +3199,7 @@ pad_final <- pad_errors %>%
 mobility_codes <- tribble(
   ~ code,        ~ msg,
   "mob_date_na",    "Missing date of ICU Mobility Scale assessment",
-  "mob_date_right", "Date of ICU Mobility Scale does not match dates tracking; please check PAD date and/or enrollment date",
+  "mob_date_right", "Date of ICU Mobility Scale does not match dates tracking; please check form date and/or enrollment date",
   "mob_level",      "Missing highest level achieved on ICU Mobility Scale"
 ) %>%
   as.data.frame() ## But create_error_df() doesn't handle tribbles
@@ -3227,10 +3227,391 @@ mobility_errors <- create_error_df(
 mobility_final <- mobility_errors %>%
   mutate(form = "ICU Mobility Scale")
 
+################################################################################
+## Accelerometer Bedside Form
+################################################################################
 
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
 
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
 
+## tribble = row-wise data.frame; easier to match code + message
+accelbed_codes <- tribble(
+  ~ code,        ~ msg,
+  "accelbed_date_na",    "Missing date of Accelerometer Bedside form",
+  "accelbed_date_right", "Date of Accelerometer Bedside form does not match dates tracking; please check form date and/or enrollment date",
+  "accelbed_times",      "Missing number of times device replaced or removed",
+  ## Removal/replacement 1
+  "accelbed_1_which",      "Missing whether instance 1 was removal or replacement",
+  "accelbed_1_time_known", "Missing whether time of replacement 1 was known",
+  "accelbed_1_time",       "Missing date and time of replacement 1",
+  "accelbed_1_device",     "Missing whether replacement 1 was wrist or ankle",
+  "accelbed_1_wrist",      "Missing whether replacement 1 was left or right wrist",
+  "accelbed_1_ankle",      "Missing whether replacement 1 was left or right ankle",
+  "accelbed_1_rsn",        "Missing reason for device removal 1",
+  "accelbed_1_other",      "Missing explanation for other reason for device removal 1",
+  ## Removal/replacement 2
+  "accelbed_2_which",      "Missing whether instance 2 was removal or replacement",
+  "accelbed_2_time_known", "Missing whether time of replacement 2 was known",
+  "accelbed_2_time",       "Missing date and time of replacement 2",
+  "accelbed_2_device",     "Missing whether replacement 2 was wrist or ankle",
+  "accelbed_2_wrist",      "Missing whether replacement 2 was left or right wrist",
+  "accelbed_2_ankle",      "Missing whether replacement 2 was left or right ankle",
+  "accelbed_2_rsn",        "Missing reason for device removal 2",
+  "accelbed_2_other",      "Missing explanation for other reason for device removal 2",
+  ## Removal/replacement 3
+  "accelbed_3_which",      "Missing whether instance 3 was removal or replacement",
+  "accelbed_3_time_known", "Missing whether time of replacement 3 was known",
+  "accelbed_3_time",       "Missing date and time of replacement 3",
+  "accelbed_3_device",     "Missing whether replacement 3 was wrist or ankle",
+  "accelbed_3_wrist",      "Missing whether replacement 3 was left or right wrist",
+  "accelbed_3_ankle",      "Missing whether replacement 3 was left or right ankle",
+  "accelbed_3_rsn",        "Missing reason for device removal 3",
+  "accelbed_3_other",      "Missing explanation for other reason for device removal 3",
+  ## Removal/replacement 4
+  "accelbed_4_which",      "Missing whether instance 4 was removal or replacement",
+  "accelbed_4_time_known", "Missing whether time of replacement 4 was known",
+  "accelbed_4_time",       "Missing date and time of replacement 4",
+  "accelbed_4_device",     "Missing whether replacement 4 was wrist or ankle",
+  "accelbed_4_wrist",      "Missing whether replacement 4 was left or right wrist",
+  "accelbed_4_ankle",      "Missing whether replacement 4 was left or right ankle",
+  "accelbed_4_rsn",        "Missing reason for device removal 4",
+  "accelbed_4_other",      "Missing explanation for other reason for device removal 4",
+  ## Removal/replacement 5
+  "accelbed_5_which",      "Missing whether instance 5 was removal or replacement",
+  "accelbed_5_time_known", "Missing whether time of replacement 5 was known",
+  "accelbed_5_time",       "Missing date and time of replacement 5",
+  "accelbed_5_device",     "Missing whether replacement 5 was wrist or ankle",
+  "accelbed_5_wrist",      "Missing whether replacement 5 was left or right wrist",
+  "accelbed_5_ankle",      "Missing whether replacement 5 was left or right ankle",
+  "accelbed_5_rsn",        "Missing reason for device removal 5",
+  "accelbed_5_other",      "Missing explanation for other reason for device removal 5",
+  ## Removal/replacement 6
+  "accelbed_6_which",      "Missing whether instance 6 was removal or replacement",
+  "accelbed_6_time_known", "Missing whether time of replacement 6 was known",
+  "accelbed_6_time",       "Missing date and time of replacement 6",
+  "accelbed_6_device",     "Missing whether replacement 6 was wrist or ankle",
+  "accelbed_6_wrist",      "Missing whether replacement 6 was left or right wrist",
+  "accelbed_6_ankle",      "Missing whether replacement 6 was left or right ankle",
+  "accelbed_6_rsn",        "Missing reason for device removal 6",
+  "accelbed_6_other",      "Missing explanation for other reason for device removal 6",
+  ## Removal/replacement 7
+  "accelbed_7_which",      "Missing whether instance 7 was removal or replacement",
+  "accelbed_7_time_known", "Missing whether time of replacement 7 was known",
+  "accelbed_7_time",       "Missing date and time of replacement 7",
+  "accelbed_7_device",     "Missing whether replacement 7 was wrist or ankle",
+  "accelbed_7_wrist",      "Missing whether replacement 7 was left or right wrist",
+  "accelbed_7_ankle",      "Missing whether replacement 7 was left or right ankle",
+  "accelbed_7_rsn",        "Missing reason for device removal 7",
+  "accelbed_7_other",      "Missing explanation for other reason for device removal 7",
+  ## Removal/replacement 8
+  "accelbed_8_which",      "Missing whether instance 8 was removal or replacement",
+  "accelbed_8_time_known", "Missing whether time of replacement 8 was known",
+  "accelbed_8_time",       "Missing date and time of replacement 8",
+  "accelbed_8_device",     "Missing whether replacement 8 was wrist or ankle",
+  "accelbed_8_wrist",      "Missing whether replacement 8 was left or right wrist",
+  "accelbed_8_ankle",      "Missing whether replacement 8 was left or right ankle",
+  "accelbed_8_rsn",        "Missing reason for device removal 8",
+  "accelbed_8_other",      "Missing explanation for other reason for device removal 8"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
 
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+accelbed_issues <- matrix(
+  FALSE, ncol = nrow(accelbed_codes), nrow = nrow(daily_df)
+)
+colnames(accelbed_issues) <- accelbed_codes$code
+rownames(accelbed_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+accelbed_issues[, "accelbed_date_na"] <- is.na(daily_df$bed_date)
+accelbed_issues[, "accelbed_date_right"] <- with(daily_df, {
+  !is.na(bed_date) & !is.na(study_date) & !(study_date == bed_date)
+})
+accelbed_issues[, "accelbed_times"] <- is.na(daily_df$bed_device_num)
+
+## Removal/replacement 1
+accelbed_issues[, "accelbed_1_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 1 & is.na(bed_device_move_place_1)
+})
+accelbed_issues[, "accelbed_1_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 1 & is.na(bed_accel_time_known_1)
+})
+accelbed_issues[, "accelbed_1_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_1) & bed_accel_time_known_1 == "Yes" &
+    is.na(bed_accel_dttm_1)
+})
+accelbed_issues[, "accelbed_1_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 1 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_1\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_1_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_1) & bed_device_move_place_1 == "Placed" &
+    !is.na(bed_wrist_ankle_1_1) & is.na(bed_wrist_rl_1)
+})
+accelbed_issues[, "accelbed_1_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_1) & bed_device_move_place_1 == "Placed" &
+    !is.na(bed_wrist_ankle_1_2) & is.na(bed_ankle_rl_1)
+})
+accelbed_issues[, "accelbed_1_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_1) & bed_device_move_place_1 == "Removed" &
+    is.na(bed_remove_why_1)
+})
+accelbed_issues[, "accelbed_1_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_1) & bed_remove_why_1 == "Other" &
+    (is.na(bed_remove_other_1) | bed_remove_other_1 == "")
+})
+
+## Removal/replacement 2
+accelbed_issues[, "accelbed_2_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 2 & is.na(bed_device_move_place_2)
+})
+accelbed_issues[, "accelbed_2_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 2 & is.na(bed_accel_time_known_2)
+})
+accelbed_issues[, "accelbed_2_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_2) & bed_accel_time_known_2 == "Yes" &
+    is.na(bed_accel_dttm_2)
+})
+accelbed_issues[, "accelbed_2_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 2 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_2\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_2_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_2) & bed_device_move_place_2 == "Placed" &
+    !is.na(bed_wrist_ankle_2_1) & is.na(bed_wrist_rl_2)
+})
+accelbed_issues[, "accelbed_2_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_2) & bed_device_move_place_2 == "Placed" &
+    !is.na(bed_wrist_ankle_2_2) & is.na(bed_ankle_rl_2)
+})
+accelbed_issues[, "accelbed_2_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_2) & bed_device_move_place_2 == "Removed" &
+    is.na(bed_remove_why_2)
+})
+accelbed_issues[, "accelbed_2_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_2) & bed_remove_why_2 == "Other" &
+    (is.na(bed_remove_other_2) | bed_remove_other_2 == "")
+})
+
+## Removal/replacement 3
+accelbed_issues[, "accelbed_3_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 3 & is.na(bed_device_move_place_3)
+})
+accelbed_issues[, "accelbed_3_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 3 & is.na(bed_accel_time_known_3)
+})
+accelbed_issues[, "accelbed_3_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_3) & bed_accel_time_known_3 == "Yes" &
+    is.na(bed_accel_dttm_3)
+})
+accelbed_issues[, "accelbed_3_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 3 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_3\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_3_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_3) & bed_device_move_place_3 == "Placed" &
+    !is.na(bed_wrist_ankle_3_1) & is.na(bed_wrist_rl_3)
+})
+accelbed_issues[, "accelbed_3_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_3) & bed_device_move_place_3 == "Placed" &
+    !is.na(bed_wrist_ankle_3_2) & is.na(bed_ankle_rl_3)
+})
+accelbed_issues[, "accelbed_3_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_3) & bed_device_move_place_3 == "Removed" &
+    is.na(bed_remove_why_3)
+})
+accelbed_issues[, "accelbed_3_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_3) & bed_remove_why_3 == "Other" &
+    (is.na(bed_remove_other_3) | bed_remove_other_3 == "")
+})
+
+## Removal/replacement 4
+accelbed_issues[, "accelbed_4_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 4 & is.na(bed_device_move_place_4)
+})
+accelbed_issues[, "accelbed_4_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 4 & is.na(bed_accel_time_known_4)
+})
+accelbed_issues[, "accelbed_4_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_4) & bed_accel_time_known_4 == "Yes" &
+    is.na(bed_accel_dttm_4)
+})
+accelbed_issues[, "accelbed_4_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 4 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_4\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_4_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_4) & bed_device_move_place_4 == "Placed" &
+    !is.na(bed_wrist_ankle_4_1) & is.na(bed_wrist_rl_4)
+})
+accelbed_issues[, "accelbed_4_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_4) & bed_device_move_place_4 == "Placed" &
+    !is.na(bed_wrist_ankle_4_2) & is.na(bed_ankle_rl_4)
+})
+accelbed_issues[, "accelbed_4_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_4) & bed_device_move_place_4 == "Removed" &
+    is.na(bed_remove_why_4)
+})
+accelbed_issues[, "accelbed_4_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_4) & bed_remove_why_4 == "Other" &
+    (is.na(bed_remove_other_4) | bed_remove_other_4 == "")
+})
+
+## Removal/replacement 5
+accelbed_issues[, "accelbed_5_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 5 & is.na(bed_device_move_place_5)
+})
+accelbed_issues[, "accelbed_5_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 5 & is.na(bed_accel_time_known_5)
+})
+accelbed_issues[, "accelbed_5_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_5) & bed_accel_time_known_5 == "Yes" &
+    is.na(bed_accel_dttm_5)
+})
+accelbed_issues[, "accelbed_5_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 5 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_5\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_5_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_5) & bed_device_move_place_5 == "Placed" &
+    !is.na(bed_wrist_ankle_5_1) & is.na(bed_wrist_rl_5)
+})
+accelbed_issues[, "accelbed_5_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_5) & bed_device_move_place_5 == "Placed" &
+    !is.na(bed_wrist_ankle_5_2) & is.na(bed_ankle_rl_5)
+})
+accelbed_issues[, "accelbed_5_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_5) & bed_device_move_place_5 == "Removed" &
+    is.na(bed_remove_why_5)
+})
+accelbed_issues[, "accelbed_5_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_5) & bed_remove_why_5 == "Other" &
+    (is.na(bed_remove_other_5) | bed_remove_other_5 == "")
+})
+
+## Removal/replacement 6
+accelbed_issues[, "accelbed_6_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 6 & is.na(bed_device_move_place_6)
+})
+accelbed_issues[, "accelbed_6_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 6 & is.na(bed_accel_time_known_6)
+})
+accelbed_issues[, "accelbed_6_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_6) & bed_accel_time_known_6 == "Yes" &
+    is.na(bed_accel_dttm_6)
+})
+accelbed_issues[, "accelbed_6_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 6 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_6\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_6_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_6) & bed_device_move_place_6 == "Placed" &
+    !is.na(bed_wrist_ankle_6_1) & is.na(bed_wrist_rl_6)
+})
+accelbed_issues[, "accelbed_6_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_6) & bed_device_move_place_6 == "Placed" &
+    !is.na(bed_wrist_ankle_6_2) & is.na(bed_ankle_rl_6)
+})
+accelbed_issues[, "accelbed_6_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_6) & bed_device_move_place_6 == "Removed" &
+    is.na(bed_remove_why_6)
+})
+accelbed_issues[, "accelbed_6_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_6) & bed_remove_why_6 == "Other" &
+    (is.na(bed_remove_other_6) | bed_remove_other_6 == "")
+})
+
+## Removal/replacement 7
+accelbed_issues[, "accelbed_7_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 7 & is.na(bed_device_move_place_7)
+})
+accelbed_issues[, "accelbed_7_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 7 & is.na(bed_accel_time_known_7)
+})
+accelbed_issues[, "accelbed_7_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_7) & bed_accel_time_known_7 == "Yes" &
+    is.na(bed_accel_dttm_7)
+})
+accelbed_issues[, "accelbed_7_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 7 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_7\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_7_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_7) & bed_device_move_place_7 == "Placed" &
+    !is.na(bed_wrist_ankle_7_1) & is.na(bed_wrist_rl_7)
+})
+accelbed_issues[, "accelbed_7_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_7) & bed_device_move_place_7 == "Placed" &
+    !is.na(bed_wrist_ankle_7_2) & is.na(bed_ankle_rl_7)
+})
+accelbed_issues[, "accelbed_7_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_7) & bed_device_move_place_7 == "Removed" &
+    is.na(bed_remove_why_7)
+})
+accelbed_issues[, "accelbed_7_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_7) & bed_remove_why_7 == "Other" &
+    (is.na(bed_remove_other_7) | bed_remove_other_7 == "")
+})
+
+## Removal/replacement 8
+accelbed_issues[, "accelbed_8_which"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 8 & is.na(bed_device_move_place_8)
+})
+accelbed_issues[, "accelbed_8_time_known"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 8 & is.na(bed_accel_time_known_8)
+})
+accelbed_issues[, "accelbed_8_time"] <- with(daily_df, {
+  !is.na(bed_accel_time_known_8) & bed_accel_time_known_8 == "Yes" &
+    is.na(bed_accel_dttm_8)
+})
+accelbed_issues[, "accelbed_8_device"] <- with(daily_df, {
+  !is.na(bed_device_num) & bed_device_num >= 8 &
+    rowSums(
+      !is.na(daily_df[, grep("^bed\\_wrist\\_ankle\\_8\\_[1|2]$", names(daily_df))])
+    ) == 0
+})
+accelbed_issues[, "accelbed_8_wrist"] <- with(daily_df, {
+  !is.na(bed_device_move_place_8) & bed_device_move_place_8 == "Placed" &
+    !is.na(bed_wrist_ankle_8_1) & is.na(bed_wrist_rl_8)
+})
+accelbed_issues[, "accelbed_8_ankle"] <- with(daily_df, {
+  !is.na(bed_device_move_place_8) & bed_device_move_place_8 == "Placed" &
+    !is.na(bed_wrist_ankle_8_2) & is.na(bed_ankle_rl_8)
+})
+accelbed_issues[, "accelbed_8_rsn"] <- with(daily_df, {
+  !is.na(bed_device_move_place_8) & bed_device_move_place_8 == "Removed" &
+    is.na(bed_remove_why_8)
+})
+accelbed_issues[, "accelbed_8_other"] <- with(daily_df, {
+  !is.na(bed_remove_why_8) & bed_remove_why_8 == "Other" &
+    (is.na(bed_remove_other_8) | bed_remove_other_8 == "")
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+accelbed_errors <- create_error_df(
+  error_matrix = accelbed_issues, error_codes = accelbed_codes
+)
+
+accelbed_final <- accelbed_errors %>%
+  mutate(form = "Accelerometer Bedside Form")
 
 ################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
@@ -3354,6 +3735,7 @@ error_dfs <- list(
   nutr_final,
   pad_final,
   mobility_final,
+  accelbed_final,
   famcap_final
 )
 
