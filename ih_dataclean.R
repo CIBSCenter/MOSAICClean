@@ -191,6 +191,95 @@ walk(
 )
 
 ################################################################################
+## Create Daily Dummy Dataset
+##
+## Several forms are filled out on a daily basis while patients are in the
+##  hospital. A few forms, like the specimen log and CADUCEUS, are filled out on
+##  specific study days, even *after* patients have died, been discharged, or
+##  have withdrawn. This is good for record-keeping, but creates falsely missing
+##  data for forms like PAD and daily data on those records not actually during
+##  a hospitalization.
+## Therefore, we create a dummy dataset to indicate patient status on each day
+##  during the study period, with indicators for hospitalization, death,
+##  discharge, and withdrawal. (A patient could withdraw, and then be known to
+##  have died or been discharged, so it is possible for >1 of these indicators
+##  to be true.)
+## FUTURE WORK might include additional indicators for whether the patient was
+##  in the ICU on a given day. There is no single variable in this dataset which
+##  indicates this, so it would have to be determined by the dates tracking form.
+################################################################################
+
+all_ids <- sort(unique(c(day1_df$id, daily_df$id, famcap_df$id)))
+all_events <- c("Enrollment /Trial Day 1", paste("Trial Day", 2:28))
+  ## discharge day is not included - it falls on one of the above events, or
+  ## after Trial Day 28 if the patient had a long hospitalization
+
+dummy_df <- data.frame(
+  id = rep(all_ids, each = length(all_events)),
+  redcap_event_name = rep(all_events, length(all_ids)),
+  stringsAsFactors = FALSE
+) %>%
+  ## Merge on relevant dates for each event: enrollment, discharge, death, w/d
+  left_join(
+    dplyr::select(
+      day1_df, id, enroll_dttm, hospdis_dttm, death_dttm, studywd_dttm,
+      studywd_writing_2
+    ),
+    by = "id"
+  ) %>%
+  ## Create new variable for study date, beginning with enrollment date/day 1
+  ## In addition to helping determine status on each day, this will help clean
+  ##  things like correct PAD assessment dates and daily data collection dates
+  group_by(id) %>%
+  mutate(
+    ## Study day/study date
+    study_day = 1:n(),
+    study_date = enroll_dttm + study_day - 1,
+    ## Indicators for various states
+    ## NOTE: Transition days (eg, day of discharge) are counted as meeting
+    ##  criteria for any applicable state. For example, if a patient dies in
+    ##  the hospital on February 1, both `inhosp` and `deceased` will be TRUE
+    ##  for that day.
+    inhosp = case_when(
+      study_date < enroll_dttm                          ~ as.logical(NA),
+      !is.na(death_dttm) & study_date > death_dttm      ~ FALSE,
+      !is.na(hospdis_dttm) & study_date > hospdis_dttm  ~ FALSE,
+      !is.na(death_dttm) & study_date <= death_dttm     ~ TRUE,
+      !is.na(hospdis_dttm) & study_date <= hospdis_dttm ~ TRUE,
+      !is.na(studywd_writing_2)                         ~ as.logical(NA),
+      TRUE                                              ~ TRUE
+    ),
+    deceased = case_when(
+      study_date < enroll_dttm                          ~ as.logical(NA),
+      !is.na(death_dttm) & study_date >= death_dttm     ~ TRUE,
+      !is.na(studywd_writing_2)                         ~ as.logical(NA),
+      TRUE                                              ~ FALSE
+    ),
+    withdrawn = case_when(
+      study_date < enroll_dttm                          ~ as.logical(NA),
+      !is.na(studywd_dttm) & study_date >= studywd_dttm ~ TRUE,
+      TRUE                                              ~ FALSE
+    ),
+    ## Is this a transition day between states? eg, date of hospital discharge
+    transition_day = case_when(
+      !is.na(hospdis_dttm) & study_date == hospdis_dttm ~ TRUE,
+      !is.na(death_dttm) & study_date == death_dttm     ~ TRUE,
+      !is.na(studywd_dttm) & study_date == studywd_dttm ~ TRUE,
+      TRUE                                              ~ FALSE
+    )
+  ) %>%
+  ungroup()
+  
+## Update daily_df to include correct events per above, including all days the
+## patient was hospitalized but not withdrawn
+daily_df <- left_join(
+  filter(dummy_df, inhosp, !withdrawn) %>%
+    dplyr::select(id, redcap_event_name, study_date, transition_day),
+  daily_df %>% mutate(in_daily = TRUE),
+  by = c("id", "redcap_event_name")
+)
+
+################################################################################
 ## Enrollment Qualification Form
 ################################################################################
 
@@ -2898,8 +2987,9 @@ nutr_final <- nutr_errors %>%
 ## tribble = row-wise data.frame; easier to match code + message
 pad_codes <- tribble(
   ~ code,        ~ msg,
-  "assess_date", "Missing date of PAD assessment",
-  "assess_num",  "Missing number of assessments done today",
+  "assess_date_na",    "Missing date of PAD assessment",
+  "assess_date_right", "Date of PAD assessment does not match dates tracking; please check PAD date and/or enrollment date",
+  "assess_num",        "Missing number of assessments done today",
   ## Should be 2 assessments in the ICU and 1 outside the ICU. In the interest
   ## of time, this check was not incorporated, because it will require lots of
   ## work with the dates tracking information. This is a place for future
@@ -2955,7 +3045,10 @@ colnames(pad_issues) <- pad_codes$code
 rownames(pad_issues) <- with(daily_df, {
   paste(id, redcap_event_name, sep = '; ') })
 
-pad_issues[, "assess_date"] <- is.na(daily_df$assess_date)
+pad_issues[, "assess_date_na"] <- is.na(daily_df$assess_date)
+pad_issues[, "assess_date_right"] <- with(daily_df, {
+  !is.na(assess_date) & !is.na(study_date) & !(study_date == assess_date)
+})
 pad_issues[, "assess_num"] <- is.na(daily_df$assess_number)
 
 ## Should be 2 assessments in the ICU and 1 outside the ICU. In the interest
