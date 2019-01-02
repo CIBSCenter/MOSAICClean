@@ -1893,7 +1893,7 @@ dt_issues[, "wd_summ"] <- with(day1_df, {
   !is.na(studywd) & studywd == "Yes" & (is.na(studywd_rsn) | studywd_rsn == "")
 })
 dt_issues[, "wd_writing"] <- with(day1_df, {
-  !is.na(studywd) & studywd == "Yes" &
+  !is.na(studywd_how) & studywd_how == "In writing" &
     rowSums(!is.na(day1_df[, grep("^studywd\\_writing\\_[0-9]+$", names(day1_df))])) == 0
 })
 dt_issues[, "wd_writing_other"] <- with(day1_df, {
