@@ -3186,6 +3186,53 @@ pad_final <- pad_errors %>%
   mutate(form = "Daily PAD Assessment")
 
 ################################################################################
+## ICU Mobility Scale Form
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+mobility_codes <- tribble(
+  ~ code,        ~ msg,
+  "mob_date_na",    "Missing date of ICU Mobility Scale assessment",
+  "mob_date_right", "Date of ICU Mobility Scale does not match dates tracking; please check PAD date and/or enrollment date",
+  "mob_level",      "Missing highest level achieved on ICU Mobility Scale"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+mobility_issues <- matrix(
+  FALSE, ncol = nrow(mobility_codes), nrow = nrow(daily_df)
+)
+colnames(mobility_issues) <- mobility_codes$code
+rownames(mobility_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+mobility_issues[, "mob_date_na"] <- is.na(daily_df$ice_mob_date)
+mobility_issues[, "mob_date_right"] <- with(daily_df, {
+  !is.na(ice_mob_date) & !is.na(study_date) & !(study_date == ice_mob_date)
+})
+mobility_issues[, "mob_level"] <- is.na(daily_df$ice_mob_scale)
+
+## -- Create a final data.frame of errors + messages ---------------------------
+mobility_errors <- create_error_df(
+  error_matrix = mobility_issues, error_codes = mobility_codes
+)
+
+mobility_final <- mobility_errors %>%
+  mutate(form = "ICU Mobility Scale")
+
+
+
+
+
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
@@ -3305,6 +3352,8 @@ error_dfs <- list(
   dt_final,
   enroll_final,
   nutr_final,
+  pad_final,
+  mobility_final,
   famcap_final
 )
 
