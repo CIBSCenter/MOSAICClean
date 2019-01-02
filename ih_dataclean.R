@@ -14,6 +14,11 @@ last_pt <- 94
 library(tidyverse)
 library(lubridate)
 
+## -- Set dates for specific events --------------------------------------------
+## Used to restrict which patients get checked for certain conditions
+epic_date <- as.Date("2018-05-15")
+safety_date <- as.Date("2018-02-26")
+
 ## -- Source helper functions --------------------------------------------------
 source("R/dataclean_helpers.R")
 
@@ -431,7 +436,9 @@ enrqual_final <- enrqual_errors %>%
 
 ## -- Missingness checks -------------------------------------------------------
 contact_missvars <- c(
-  "title", "sex", "first_name", "last_name", "name_common", "ssn", "homeless"
+  "title", "sex", "first_name", "last_name",
+  # "name_common", ## removed by request 1/2/2019
+  "ssn", "homeless"
 )
 contact_missing <- check_missing(
   df = day1_df, variables = contact_missvars, ddict = ih_ddict
@@ -1881,7 +1888,8 @@ dt_issues[, "sur_consent_doc"] <- with(day1_df, {
   !is.na(consent_self) & consent_self == "No" & is.na(sur_consent_upload)
 })
 dt_issues[, "sur_icf"] <- with(day1_df, {
-  !is.na(consent_self) & consent_self == "No" & is.na(icf_chart_reminder_1)
+  !is.na(enroll_dttm) & enroll_dttm >= epic_date &
+    !is.na(consent_self) & consent_self == "No" & is.na(icf_chart_reminder_1)
 })
 
 ## Self/reconsent
@@ -1893,7 +1901,8 @@ dt_issues[, "pt_reconsent_ph1_other"] <- with(day1_df, {
     (is.na(reconsent_ph1_other) | reconsent_ph1_other == "")
 })
 dt_issues[, "pt_icf"] <- with(day1_df, {
-  pt_consented & is.na(reconsent_ph1_starpanel_1)
+  !is.na(enroll_dttm) & enroll_dttm >= epic_date &
+    pt_consented & is.na(reconsent_ph1_starpanel_1)
 })
 dt_issues[, "pt_icd_date"] <- with(day1_df, {
   pt_consented & is.na(pt_consent_date)
@@ -1949,7 +1958,8 @@ dt_issues[, "pt_reconsent_doc"] <- with(day1_df, {
 
 ## -- Death --------------------------------------------------------------------
 dt_issues[, "death_epic"] <- with(day1_df, {
-  !is.na(death) & death == "Yes" & is.na(death_starpanel_1)
+  !is.na(enroll_dttm) & enroll_dttm >= epic_date &
+    !is.na(death) & death == "Yes" & is.na(death_starpanel_1)
 })
 dt_issues[, "death_dttm"] <- with(day1_df, {
   !is.na(death) & death == "Yes" & is.na(death_dttm)
@@ -1963,7 +1973,8 @@ dt_issues[, "death_summ"] <- with(day1_df, {
 
 ## -- Withdrawal ---------------------------------------------------------------
 dt_issues[, "wd_epic"] <- with(day1_df, {
-  !is.na(studywd) & studywd == "Yes" & is.na(studywd_starpanel_1)
+  !is.na(enroll_dttm) & enroll_dttm >= epic_date &
+    !is.na(studywd) & studywd == "Yes" & is.na(studywd_starpanel_1)
 })
 dt_issues[, "wd_dttm"] <- with(day1_df, {
   !is.na(studywd) & studywd == "Yes" & is.na(studywd_dttm)
@@ -1992,10 +2003,12 @@ dt_issues[, "wd_writing_other"] <- with(day1_df, {
 
 ## -- Discharge ----------------------------------------------------------------
 dt_issues[, "hospdis_epic"] <- with(day1_df, {
-  !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_starpanel_1)
+  !is.na(enroll_dttm) & enroll_dttm >= epic_date &
+    !is.na(hospdis) & hospdis == "Yes" & is.na(hospdis_starpanel_1)
 })
 dt_issues[, "hospdis_safety"] <- with(day1_df, {
-  !is.na(hospdis) & hospdis == "Yes" &
+  !is.na(enroll_dttm) & enroll_dttm >= safety_date &
+    !is.na(hospdis) & hospdis == "Yes" &
     rowSums(!is.na(day1_df[, grep("^fu\\_safety\\_[0-9]+$", names(day1_df))])) == 0
 })
 dt_issues[, "hospdis_safety_other"] <- with(day1_df, {
