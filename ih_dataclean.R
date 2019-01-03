@@ -2988,6 +2988,159 @@ nutr_final <- nutr_errors %>%
   mutate(form = "Enrollment Nutrition Data")
 
 ################################################################################
+## Daily Data Collection (MDS)
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+dailymds_missvars <- c(
+  "daily_date", "vent_today", "phys_restrain", "remove_device", "ptot_daily",
+  "tube_daily_yn"
+)
+dailymds_missing <- check_missing(
+  df = daily_df, variables = dailymds_missvars, ddict = ih_ddict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+dailymds_codes <- tribble(
+  ~ code,        ~ msg,
+  "daily_date_right", "Date of Daily Data Collection (MDS) does not match dates tracking; please check form date and/or enrollment date",
+  ## ABC
+  "sedation",      "Missing whether patient received sedation",
+  "sat",           "On sedation, but missing whether patient received an SAT",
+  "sat_rsn",       "Missing reason patient did not get SAT",
+  "sat_rsn_other", "Missing explanation of other reason patient did not get SAT",
+  "sbt",           "On MV, but missing whether patient received an SBT",
+  "sbt_rsn",       "Missing reason patient did not get SBT",
+  "sbt_rsn_other", "Missing explanation of other reason patient did not get SBT",
+  "sat_sbt",       "Missing whether patient off sedation during SBT",
+  ## Agitation
+  "device_which", "Missing which devices patient removed",
+  "device_other", "Missing explanation of other device removed",
+  ## PT/OT
+  "ptot_actual", "Missing whether ordered PT/OT actually occurred",
+  ## Nutrition
+  "tube_types",     "Missing how many types of tube feeding",
+  "tube_type_1",    "No option marked for type of tube feeding 1",
+  "tube_vol_1",     "Missing volume of tube feeding 1",
+  "tube_type_2",    "No option marked for type of tube feeding 2",
+  "tube_vol_2",     "Missing volume of tube feeding 2",
+  "tpn_cals_goal",  "Missing calorie goal for TPN",
+  "tpn_cals_total", "Missing total calories for TPN",
+  "tpn_aa_goal",    "Missing amino acid goal for TPN",
+  "tpn_aa_total",   "Missing total amino acid for TPN"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+dailymds_issues <- matrix(
+  FALSE, ncol = nrow(dailymds_codes), nrow = nrow(daily_df)
+)
+colnames(dailymds_issues) <- dailymds_codes$code
+rownames(dailymds_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+dailymds_issues[, "daily_date_right"] <- with(daily_df, {
+  !is.na(daily_date) & !is.na(study_date) & !(study_date == daily_date)
+})
+## ABC
+dailymds_issues[, "sedation"] <- with(daily_df, {
+  !is.na(vent_today) & vent_today == "Yes" & is.na(sedation_today)
+})
+dailymds_issues[, "sat"] <- with(daily_df, {
+  !is.na(sedation_today) & sedation_today == "Yes" & is.na(sat_today)
+})
+dailymds_issues[, "sat_rsn"] <- with(daily_df, {
+  !is.na(sat_today) & sat_today == "No" &
+    rowSums(
+      !is.na(daily_df[, grep("^sat\\_rsn\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+dailymds_issues[, "sat_rsn_other"] <- with(daily_df, {
+  !is.na(sat_rsn_99) & (is.na(sat_other) | sat_other == "")
+})
+dailymds_issues[, "sbt"] <- with(daily_df, {
+  !is.na(vent_today) & vent_today == "Yes" & is.na(sbt_today)
+})
+dailymds_issues[, "sbt_rsn"] <- with(daily_df, {
+  !is.na(sbt_today) & sbt_today == "No" &
+    rowSums(
+      !is.na(daily_df[, grep("^sbt\\_rsn\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+dailymds_issues[, "sbt_rsn_other"] <- with(daily_df, {
+  !is.na(sbt_rsn_99) & (is.na(sbt_other) | sbt_other == "")
+})
+dailymds_issues[, "sat_sbt"] <- with(daily_df, {
+  !is.na(sbt_today) & sbt_today == "Yes" & is.na(abc_paired)
+})
+
+## Agitation
+dailymds_issues[, "device_which"] <- with(daily_df, {
+  !is.na(remove_device) & remove_device == "Yes" &
+    rowSums(
+      !is.na(daily_df[, grep("^devices\\_removed\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+dailymds_issues[, "device_other"] <- with(daily_df, {
+  !is.na(devices_removed_99) & (is.na(device_other) | device_other == "")
+})
+
+## PT/OT
+dailymds_issues[, "ptot_actual"] <- with(daily_df, {
+  !is.na(ptot_daily) & ptot_daily == "Yes" & is.na(ptot_y_daily)
+})
+
+## Nutrition
+dailymds_issues[, "tube_types"] <- with(daily_df, {
+  !is.na(tube_daily_yn) & tube_daily_yn == "Yes" & is.na(tube_daily_num)
+})
+dailymds_issues[, "tube_type_1"] <- with(daily_df, {
+  !is.na(tube_daily_num) & tube_daily_num >= 1 &
+    rowSums(
+      !is.na(daily_df[, grep("^tube\\_daily\\_type\\_1\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+dailymds_issues[, "tube_vol_1"] <- with(daily_df, {
+  !is.na(tube_daily_num) & tube_daily_num >= 1 & is.na(tube_daily_vol_1)
+})
+dailymds_issues[, "tube_type_2"] <- with(daily_df, {
+  !is.na(tube_daily_num) & tube_daily_num >= 2 &
+    rowSums(
+      !is.na(daily_df[, grep("^tube\\_daily\\_type\\_2\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+dailymds_issues[, "tube_vol_2"] <- with(daily_df, {
+  !is.na(tube_daily_num) & tube_daily_num >= 2 & is.na(tube_daily_vol_2)
+})
+dailymds_issues[, "tpn_cals_goal"] <- with(daily_df, {
+  !is.na(tpn_daily_yn) & tpn_daily_yn == "Yes" & is.na(cal_goal)
+})
+dailymds_issues[, "tpn_cals_total"] <- with(daily_df, {
+  !is.na(tpn_daily_yn) & tpn_daily_yn == "Yes" & is.na(cal_tot)
+})
+dailymds_issues[, "tpn_aa_goal"] <- with(daily_df, {
+  !is.na(tpn_daily_yn) & tpn_daily_yn == "Yes" & is.na(amino_goal)
+})
+dailymds_issues[, "tpn_aa_total"] <- with(daily_df, {
+  !is.na(tpn_daily_yn) & tpn_daily_yn == "Yes" & is.na(amino_tot)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+dailymds_errors <- create_error_df(
+  error_matrix = dailymds_issues, error_codes = dailymds_codes
+)
+
+dailymds_final <- bind_rows(dailymds_missing, dailymds_errors) %>%
+  mutate(form = "Daily Data Collection (MDS)")
+
+################################################################################
 ## PAD Form
 ################################################################################
 
@@ -3746,6 +3899,7 @@ error_dfs <- list(
   dt_final,
   enroll_final,
   nutr_final,
+  dailymds_final,
   pad_final,
   mobility_final,
   accelbed_final,
