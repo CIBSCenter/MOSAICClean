@@ -74,7 +74,8 @@ day1_df <- post_to_df(
           "prehospital_function_assessment_form",
           "dates_tracking_form",
           "enrollment_data_collection_form_mds",
-          "enrollment_nutrition_data_form"
+          "enrollment_nutrition_data_form",
+          "dna_log"
         ),
         collapse = ","
       ),
@@ -109,7 +110,14 @@ day1_df <- post_to_df(
     ##  (death is recorded in the same spot whether it occurs in hospital or
     ##   in follow-up)
     died_inhosp = !is.na(death) & death == "Yes" &
-      (is.na(hospdis) | hospdis == "No")
+      (is.na(hospdis) | hospdis == "No"),
+    ## Create variable for last in-hospital date
+    last_inhosp = case_when(
+      !is.na(hospdis_dttm) ~ hospdis_dttm,
+      !is.na(death_dttm)   ~ death_dttm,
+      !is.na(studywd_dttm) ~ studywd_dttm,
+      TRUE                 ~ as.Date(NA)
+    )
   ) %>%
   ## TEMPORARY: Select only patients up till last_pt (set above)
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
@@ -4060,6 +4068,68 @@ accelplace_final <- accelplace_errors %>%
   mutate(form = "Accelerometer Placement")
 
 ################################################################################
+## DNA Log (filled out once, included with Enrollment/Trial Day 1)
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+dna_codes <- tribble(
+  ~ code,           ~ msg,
+  "dna_drawn",      "Missing whether a DNA specimen was drawn",
+  "dna_rsn",        "Missing reason DNA specimen not drawn",
+  "dna_rsn_other",  "No explanation for other reason DNA specimen was not drawn",
+  "dna_date_miss",  "Missing date DNA specimen was drawn",
+  "dna_date_range", "Date DNA was drawn is either prior to enrollment or after last in-hospital date",
+  "dna_trans",      "Missing whether patient had a blood transfusion within 6m of DNA draw",
+  "dna_mail",       "Missing whether DNA specimen was mailed to DNA Core Lab"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+dna_issues <- matrix(
+  FALSE, ncol = nrow(dna_codes), nrow = nrow(day1_df)
+)
+colnames(dna_issues) <- dna_codes$code
+rownames(dna_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+dna_issues[, "dna_drawn"] <- is.na(day1_df$dna_specimen)
+dna_issues[, "dna_rsn"] <- with(day1_df, {
+  !is.na(dna_specimen) & dna_specimen == "No" & is.na(dna_no_rsn)
+})
+dna_issues[, "dna_rsn_other"] <- with(day1_df, {
+  !is.na(dna_no_rsn) & dna_no_rsn == "Other" & (is.na(dna_other) | dna_other == "")
+})
+dna_issues[, "dna_date_miss"] <- with(day1_df, {
+  !is.na(dna_specimen) & dna_specimen == "Yes" & is.na(dna_date)
+})
+dna_issues[, "dna_date_range"] <- with(day1_df, {
+  ifelse(is.na(dna_date), FALSE,
+         (!is.na(enroll_dttm) & dna_date < enroll_dttm) |
+           (!is.na(last_inhosp) & dna_date > last_inhosp))
+})
+dna_issues[, "dna_trans"] <- with(day1_df, {
+  !is.na(dna_specimen) & dna_specimen == "Yes" & is.na(transfusion)
+})
+dna_issues[, "dna_mail"] <- with(day1_df, {
+  !is.na(dna_specimen) & dna_specimen == "Yes" & is.na(dna_mailed)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+dna_errors <- create_error_df(
+  error_matrix = dna_issues, error_codes = dna_codes
+)
+
+dna_final <- dna_errors %>%
+  mutate(form = "DNA Log")
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
@@ -4184,6 +4254,7 @@ error_dfs <- list(
   mobility_final,
   accelbed_final,
   accelplace_final,
+  dna_final,
   famcap_final
 )
 
