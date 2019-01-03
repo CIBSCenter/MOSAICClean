@@ -142,8 +142,7 @@ check_missing <- function(df, variables, ddict = datadict){
       lapply(variables, FUN = function(x){ is.na(df[,x]) })
     )
     colnames(missing_matrix) <- paste0("miss_", variables)
-    rownames(missing_matrix) <-
-      paste0(df[,"id"], "; ", df[,"redcap_event_name"])
+    rownames(missing_matrix) <- with(df, paste0(id, "; ", redcap_event_name))
     
     ## Create final data set: One row per column per missing value, with error
     ## message that matches that column name
