@@ -3780,6 +3780,286 @@ accelbed_final <- accelbed_errors %>%
   mutate(form = "Accelerometer Bedside Form")
 
 ################################################################################
+## Accelerometer Placement Form
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+accelplace_codes <- tribble(
+  ~ code,        ~ msg,
+  "accelplace_date_na",    "Missing date of Accelerometer Placement Form",
+  "accelplace_date_right", "Date of Accelerometer Placement does not match dates tracking; please check form date and/or enrollment date",
+  "accelplace_ever",       "Missing whether patient ever wore an accelerometer today",
+  "accelplace_rsn",        "Missing reason patient never wore accelerometer today",
+  "accelplace_rsn_other",  "No explanation for other or unknown reason patient never wore accelerometer today",
+  "accelplace_icu",        "Missing whether patient had ICU orders",
+  ## Placement check 1 (all days)
+  # "accelplace_1_wrist_num", "Missing wrist device number at placement check 1", ## no longer in database
+  "accelplace_1_yn",               "Missing whether placement check 1 was completed",
+  "accelplace_1_rsn",              "Missing reason placement check 1 not completed",
+  "accelplace_1_other",            "No explanation for other reason placement check 1 not completed",
+  "accelplace_1_time",             "Missing time of placement check 1",
+  ## Wrist
+  "accelplace_1_wrist_yn",         "Missing whether patient was wearing wrist device at placement check 1",
+  "accelplace_1_wrist_dom",        "Missing whether wrist device was on dominant hand at placement check 1",
+  "accelplace_1_wrist_rsn",        "Missing reason wrist device was not worn at placement check 1",
+  "accelplace_1_wrist_other",      "No explanation for other reason wrist device not worn at placement check 1",
+  "accelplace_1_wrist_narsn",      "Missing reason wrist device was not assessed at placement check 1",
+  "accelplace_1_wrist_naother",    "No explanation for other reason wrist device was not assessed at placement check 1",
+  "accelplace_1_wrist_skin",       "Missing skin assessment on wrist for placement check 1",
+  "accelplace_1_wrist_skin_na",    "Missing reason skin not assessed on wrist at placement check 1",
+  "accelplace_1_wrist_skin_other", "No explanation for other reason skin not assessed on wrist at placement check 1",
+  ## Ankle
+  "accelplace_1_ankle_yn",         "Missing whether patient was wearing ankle device at placement check 1",
+  "accelplace_1_ankle_dom",        "Missing whether ankle device was on right ankle at placement check 1",
+  "accelplace_1_ankle_rsn",        "Missing reason ankle device was not worn at placement check 1",
+  "accelplace_1_ankle_other",      "No explanation for other reason ankle device not worn at placement check 1",
+  "accelplace_1_ankle_narsn",      "Missing reason ankle device was not assessed at placement check 1",
+  "accelplace_1_ankle_naother",    "No explanation for other reason ankle device was not assessed at placement check 1",
+  "accelplace_1_ankle_skin",       "Missing skin assessment on ankle for placement check 1",
+  "accelplace_1_ankle_skin_na",    "Missing reason skin not assessed on ankle at placement check 1",
+  "accelplace_1_ankle_skin_other", "No explanation for other reason skin not assessed on ankle at placement check 1",
+  ## Placement check 2 (days with ICU orders)
+  "accelplace_2_yn",               "ICU orders today, but missing whether placement check 2 was completed",
+  "accelplace_2_rsn",              "Missing reason placement check 2 not completed",
+  "accelplace_2_other",            "No explanation for other reason placement check 2 not completed",
+  "accelplace_2_time",             "Missing time of placement check 2",
+  ## Wrist
+  "accelplace_2_wrist_yn",         "Missing whether patient was wearing wrist device at placement check 2",
+  "accelplace_2_wrist_dom",        "Missing whether wrist device was on dominant hand at placement check 2",
+  "accelplace_2_wrist_rsn",        "Missing reason wrist device was not worn at placement check 2",
+  "accelplace_2_wrist_other",      "No explanation for other reason wrist device not worn at placement check 2",
+  "accelplace_2_wrist_narsn",      "Missing reason wrist device was not assessed at placement check 2",
+  "accelplace_2_wrist_naother",    "No explanation for other reason wrist device was not assessed at placement check 2",
+  "accelplace_2_wrist_skin",       "Missing skin assessment on wrist for placement check 2",
+  "accelplace_2_wrist_skin_na",    "Missing reason skin not assessed on wrist at placement check 2",
+  "accelplace_2_wrist_skin_other", "No explanation for other reason skin not assessed on wrist at placement check 2",
+  ## Ankle
+  "accelplace_2_ankle_yn",         "Missing whether patient was wearing ankle device at placement check 2",
+  "accelplace_2_ankle_dom",        "Missing whether ankle device was on right ankle at placement check 2",
+  "accelplace_2_ankle_rsn",        "Missing reason ankle device was not worn at placement check 2",
+  "accelplace_2_ankle_other",      "No explanation for other reason ankle device not worn at placement check 2",
+  "accelplace_2_ankle_narsn",      "Missing reason ankle device was not assessed at placement check 2",
+  "accelplace_2_ankle_naother",    "No explanation for other reason ankle device was not assessed at placement check 2",
+  "accelplace_2_ankle_skin",       "Missing skin assessment on ankle for placement check 2",
+  "accelplace_2_ankle_skin_na",    "Missing reason skin not assessed on ankle at placement check 2",
+  "accelplace_2_ankle_skin_other", "No explanation for other reason skin not assessed on ankle at placement check 2"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+accelplace_issues <- matrix(
+  FALSE, ncol = nrow(accelplace_codes), nrow = nrow(daily_df)
+)
+colnames(accelplace_issues) <- accelplace_codes$code
+rownames(accelplace_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+accelplace_issues[, "accelplace_date_na"] <- is.na(daily_df$coord_accel_date)
+accelplace_issues[, "accelplace_date_right"] <- with(daily_df, {
+  !is.na(coord_accel_date) & !is.na(study_date) & !(study_date == coord_accel_date)
+})
+accelplace_issues[, "accelplace_ever"] <- is.na(daily_df$coord_ever)
+accelplace_issues[, "accelplace_rsn"] <- with(daily_df, {
+  !is.na(coord_ever) & coord_ever == "No" & is.na(coord_ever_rsn_no)
+})
+accelplace_issues[, "accelplace_rsn_other"] <- with(daily_df, {
+  !is.na(coord_ever_rsn_no) &
+    coord_ever_rsn_no == "Other/Unknown noncompliance (explain)" &
+    (is.na(coord_ever_other) | coord_ever_other == "")
+})
+accelplace_issues[, "accelplace_icu"] <- is.na(daily_df$coord_icu_yn)
+
+## Placement check 1 (all days)
+accelplace_issues[, "accelplace_1_yn"] <- is.na(daily_df$coord_assess_1)
+accelplace_issues[, "accelplace_1_rsn"] <- with(daily_df, {
+  !is.na(coord_assess_1) & coord_assess_1 == "No" & is.na(coord_assess_no_1)
+})
+accelplace_issues[, "accelplace_1_other"] <- with(daily_df, {
+  !is.na(coord_assess_no_1) & coord_assess_no_1 == "Other" &
+    (is.na(coord_assess_other_1) | coord_assess_other_1 == "")
+})
+accelplace_issues[, "accelplace_1_rsn"] <- with(daily_df, {
+  !is.na(coord_assess_1) & coord_assess_1 == "Yes" & is.na(coord_dttm_1)
+})
+
+## Wrist
+accelplace_issues[, "accelplace_1_wrist_yn"] <- with(daily_df, {
+  !is.na(coord_assess_1) & coord_assess_1 == "Yes" & is.na(coord_wrist_1)
+})
+ ## Device worn
+accelplace_issues[, "accelplace_1_wrist_dom"] <- with(daily_df, {
+  !is.na(coord_wrist_1) & coord_wrist_1 == "Yes" & is.na(coord_wrist_dom_1)
+})
+accelplace_issues[, "accelplace_1_wrist_skin"] <- with(daily_df, {
+  !is.na(coord_wrist_1) & coord_wrist_1 == "Yes" & is.na(coord_wrist_skin_1)
+})
+accelplace_issues[, "accelplace_1_wrist_skin_na"] <- with(daily_df, {
+  !is.na(coord_wrist_skin_1) & coord_wrist_skin_1 == "Not assessed" &
+    is.na(coord_wrist_skin_na_1)
+})
+accelplace_issues[, "accelplace_1_wrist_skin_other"] <- with(daily_df, {
+  !is.na(coord_wrist_skin_na_1) & coord_wrist_skin_na_1 == "Other" &
+    (is.na(coord_wrist_skin_other_1) | coord_wrist_skin_other_1 == "")
+})
+ ## Device not worn
+accelplace_issues[, "accelplace_1_wrist_rsn"] <- with(daily_df, {
+  !is.na(coord_wrist_1) & coord_wrist_1 == "No" & is.na(coord_wrist_no_1)
+})
+accelplace_issues[, "accelplace_1_wrist_other"] <- with(daily_df, {
+  !is.na(coord_wrist_no_1) & coord_wrist_no_1 == "Other" &
+    (is.na(coord_wrist_no_other_1) | coord_wrist_no_other_1 == "")
+})
+ ## Wrist not assessed
+accelplace_issues[, "accelplace_1_wrist_narsn"] <- with(daily_df, {
+  !is.na(coord_wrist_1) & coord_wrist_1 == "Not assessed" & is.na(coord_wrist_na_1)
+})
+accelplace_issues[, "accelplace_1_wrist_naother"] <- with(daily_df, {
+  !is.na(coord_wrist_na_1) & coord_wrist_na_1 == "Other" &
+    (is.na(coord_wrist_na_other_1) | coord_wrist_na_other_1 == "")
+})
+
+## Ankle
+accelplace_issues[, "accelplace_1_ankle_yn"] <- with(daily_df, {
+  !is.na(coord_assess_1) & coord_assess_1 == "Yes" & is.na(coord_ankle_1)
+})
+ ## Device worn
+accelplace_issues[, "accelplace_1_ankle_dom"] <- with(daily_df, {
+  !is.na(coord_ankle_1) & coord_ankle_1 == "Yes" & is.na(coord_ankle_dom_1)
+})
+accelplace_issues[, "accelplace_1_ankle_skin"] <- with(daily_df, {
+  !is.na(coord_ankle_1) & coord_ankle_1 == "Yes" & is.na(coord_ankle_skin_1)
+})
+accelplace_issues[, "accelplace_1_ankle_skin_na"] <- with(daily_df, {
+  !is.na(coord_ankle_skin_1) & coord_ankle_skin_1 == "Not assessed" &
+    is.na(coord_ankle_skin_na_1)
+})
+accelplace_issues[, "accelplace_1_ankle_skin_other"] <- with(daily_df, {
+  !is.na(coord_ankle_skin_na_1) & coord_ankle_skin_na_1 == "Other" &
+    (is.na(coord_ankle_skin_other_1) | coord_ankle_skin_other_1 == "")
+})
+ ## Device not worn
+accelplace_issues[, "accelplace_1_ankle_rsn"] <- with(daily_df, {
+  !is.na(coord_ankle_1) & coord_ankle_1 == "No" & is.na(coord_ankle_no_1)
+})
+accelplace_issues[, "accelplace_1_ankle_other"] <- with(daily_df, {
+  !is.na(coord_ankle_no_1) & coord_ankle_no_1 == "Other" &
+    (is.na(coord_ankle_no_other_1) | coord_ankle_no_other_1 == "")
+})
+ ## Ankle not assessed
+accelplace_issues[, "accelplace_1_ankle_narsn"] <- with(daily_df, {
+  !is.na(coord_ankle_1) & coord_ankle_1 == "Not assessed" & is.na(coord_ankle_na_1)
+})
+accelplace_issues[, "accelplace_1_ankle_naother"] <- with(daily_df, {
+  !is.na(coord_ankle_na_1) & coord_ankle_na_1 == "Other" &
+    (is.na(coord_ankle_na_other_1) | coord_ankle_na_other_1 == "")
+})
+
+## Placement check 2
+##  (days with ICU orders; questions only visible if accelerometer ever worn)
+accelplace_issues[, "accelplace_2_yn"] <- with(daily_df, {
+  !is.na(coord_ever) & coord_ever == "Yes" &
+    !is.na(coord_icu_yn) & coord_icu_yn == "Yes" &
+    is.na(coord_assess_2)
+})
+accelplace_issues[, "accelplace_2_rsn"] <- with(daily_df, {
+  !is.na(coord_assess_2) & coord_assess_2 == "No" & is.na(coord_assess_no_2)
+})
+accelplace_issues[, "accelplace_2_other"] <- with(daily_df, {
+  !is.na(coord_assess_no_2) & coord_assess_no_2 == "Other" &
+    (is.na(coord_assess_other_2) | coord_assess_other_2 == "")
+})
+accelplace_issues[, "accelplace_2_rsn"] <- with(daily_df, {
+  !is.na(coord_assess_2) & coord_assess_2 == "Yes" & is.na(coord_dttm_2)
+})
+
+## Wrist
+accelplace_issues[, "accelplace_2_wrist_yn"] <- with(daily_df, {
+  !is.na(coord_assess_2) & coord_assess_2 == "Yes" & is.na(coord_wrist_2)
+})
+## Device worn
+accelplace_issues[, "accelplace_2_wrist_dom"] <- with(daily_df, {
+  !is.na(coord_wrist_2) & coord_wrist_2 == "Yes" & is.na(coord_wrist_dom_2)
+})
+accelplace_issues[, "accelplace_2_wrist_skin"] <- with(daily_df, {
+  !is.na(coord_wrist_2) & coord_wrist_2 == "Yes" & is.na(coord_wrist_skin_2)
+})
+accelplace_issues[, "accelplace_2_wrist_skin_na"] <- with(daily_df, {
+  !is.na(coord_wrist_skin_2) & coord_wrist_skin_2 == "Not assessed" &
+    is.na(coord_wrist_skin_na_2)
+})
+accelplace_issues[, "accelplace_2_wrist_skin_other"] <- with(daily_df, {
+  !is.na(coord_wrist_skin_na_2) & coord_wrist_skin_na_2 == "Other" &
+    (is.na(coord_wrist_skin_other_2) | coord_wrist_skin_other_2 == "")
+})
+## Device not worn
+accelplace_issues[, "accelplace_2_wrist_rsn"] <- with(daily_df, {
+  !is.na(coord_wrist_2) & coord_wrist_2 == "No" & is.na(coord_wrist_no_2)
+})
+accelplace_issues[, "accelplace_2_wrist_other"] <- with(daily_df, {
+  !is.na(coord_wrist_no_2) & coord_wrist_no_2 == "Other" &
+    (is.na(coord_wrist_no_other_2) | coord_wrist_no_other_2 == "")
+})
+## Wrist not assessed
+accelplace_issues[, "accelplace_2_wrist_narsn"] <- with(daily_df, {
+  !is.na(coord_wrist_2) & coord_wrist_2 == "Not assessed" & is.na(coord_wrist_na_2)
+})
+accelplace_issues[, "accelplace_2_wrist_naother"] <- with(daily_df, {
+  !is.na(coord_wrist_na_2) & coord_wrist_na_2 == "Other" &
+    (is.na(coord_wrist_na_other_2) | coord_wrist_na_other_2 == "")
+})
+
+## Ankle
+accelplace_issues[, "accelplace_2_ankle_yn"] <- with(daily_df, {
+  !is.na(coord_assess_2) & coord_assess_2 == "Yes" & is.na(coord_ankle_2)
+})
+## Device worn
+accelplace_issues[, "accelplace_2_ankle_dom"] <- with(daily_df, {
+  !is.na(coord_ankle_2) & coord_ankle_2 == "Yes" & is.na(coord_ankle_dom_2)
+})
+accelplace_issues[, "accelplace_2_ankle_skin"] <- with(daily_df, {
+  !is.na(coord_ankle_2) & coord_ankle_2 == "Yes" & is.na(coord_ankle_skin_2)
+})
+accelplace_issues[, "accelplace_2_ankle_skin_na"] <- with(daily_df, {
+  !is.na(coord_ankle_skin_2) & coord_ankle_skin_2 == "Not assessed" &
+    is.na(coord_ankle_skin_na_2)
+})
+accelplace_issues[, "accelplace_2_ankle_skin_other"] <- with(daily_df, {
+  !is.na(coord_ankle_skin_na_2) & coord_ankle_skin_na_2 == "Other" &
+    (is.na(coord_ankle_skin_other_2) | coord_ankle_skin_other_2 == "")
+})
+## Device not worn
+accelplace_issues[, "accelplace_2_ankle_rsn"] <- with(daily_df, {
+  !is.na(coord_ankle_2) & coord_ankle_2 == "No" & is.na(coord_ankle_no_2)
+})
+accelplace_issues[, "accelplace_2_ankle_other"] <- with(daily_df, {
+  !is.na(coord_ankle_no_2) & coord_ankle_no_2 == "Other" &
+    (is.na(coord_ankle_no_other_2) | coord_ankle_no_other_2 == "")
+})
+## ankle not assessed
+accelplace_issues[, "accelplace_2_ankle_narsn"] <- with(daily_df, {
+  !is.na(coord_ankle_2) & coord_ankle_2 == "Not assessed" & is.na(coord_ankle_na_2)
+})
+accelplace_issues[, "accelplace_2_ankle_naother"] <- with(daily_df, {
+  !is.na(coord_ankle_na_2) & coord_ankle_na_2 == "Other" &
+    (is.na(coord_ankle_na_other_2) | coord_ankle_na_other_2 == "")
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+accelplace_errors <- create_error_df(
+  error_matrix = accelplace_issues, error_codes = accelplace_codes
+)
+
+accelplace_final <- accelplace_errors %>%
+  mutate(form = "Accelerometer Placement")
+
+################################################################################
 ## Family Capacitation Survey (added with protocol 1.02)
 ################################################################################
 
@@ -3903,6 +4183,7 @@ error_dfs <- list(
   pad_final,
   mobility_final,
   accelbed_final,
+  accelplace_final,
   famcap_final
 )
 
