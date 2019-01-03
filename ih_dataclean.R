@@ -53,6 +53,9 @@ dttm_vars <- ih_ddict %>%
   pull(field_name)
 
 ## -- Export data --------------------------------------------------------------
+## day1_df and daily_df will be used to clean multiple forms; other data.frames
+##  are used for specific forms/time points (eg, CADUCEUS only filled out on
+##  days 1/3/5)
 reconsent_levels <- c(
   "Yes, agreed to continue (signed ICD)",
   "No, withdrew from further participation (signed ICD)"
@@ -163,6 +166,50 @@ daily_df <- post_to_df(
   ## TEMPORARY: Select only patients up till last_pt (set above)
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
+
+## CADUCEUS, filled out on days 1/3/5 for all patients
+## Step 1: Create dummy dataset to make sure all patients have a record for all
+##  three days
+cad_dummy <- data.frame(
+  id = rep(all_ids, each = 3),
+  redcap_event_name = rep(
+    c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5"),
+    length(all_ids)
+  ),
+  stringsAsFactors = FALSE
+)
+
+cad_df <- post_to_df(
+  httr::POST(
+    url = rc_url,
+    body = list(
+      token = Sys.getenv("MOSAIC_IH"),
+      content = "record",   ## export *records*
+      format = "csv",       ## export as *CSV*
+      forms = "caduceus_2",
+      fields = c("id"),     ## additional fields
+      events = paste(
+        c("enrollment_trial_d_arm_1","trial_day_3_arm_1","trial_day_5_arm_1"),
+        collapse = ","
+      ),
+      rawOrLabel = "label", ## export factor *labels* vs numeric codes
+      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
+    )
+  )
+) %>%
+  ## Remove any test patients from dataset
+  filter(!str_detect(tolower(id), "test")) %>%
+  ## Join with CADUCEUS dummy dataset
+  right_join(cad_dummy, by = c("id", "redcap_event_name")) %>%
+  ## Add on protocol - CADUCEUS added with protocol 1.02
+  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(
+    as.numeric(ptnum) <= last_pt,
+    ## Also remove any patients on protocol 1.01 - CADUCEUS not added until 1.02
+    !(!is.na(protocol) & protocol == "Protocol v1.01")
+  )
 
 ## Family Capacitation Survey, administered on event 7
 famcap_df <- post_to_df(
@@ -4238,6 +4285,69 @@ famcap_final <- famcap_errors %>%
   mutate(form = "Family Capacitation Survey")
 
 ################################################################################
+## CADUCEUS (completed on days 1, 3, 5, even after death/discharge/WD)
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+cad_codes <- tribble(
+  ~ code,          ~ msg,
+  "cad_date",      "Missing date of CADUCEUS blood draw",
+  "cad_draw",      "Missing whether CADUCEUS values were tested",
+  "cad_rsn",       "Missing reason CADUCEUS values were not tested",
+  "cad_other",     "No explanation for other reason CADUCEUS values not tested",
+  "cad_ache_ul",   "Missing AChE U/L",
+  "cad_ache_ughb", "Missing AChE U/gHb",
+  "cad_bche",      "Missing BChE (U/L)"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+cad_issues <- matrix(
+  FALSE, ncol = nrow(cad_codes), nrow = nrow(cad_df)
+)
+colnames(cad_issues) <- cad_codes$code
+rownames(cad_issues) <- with(cad_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+cad_issues[, "cad_date"] <- is.na(cad_df$cad_date)
+cad_issues[, "cad_draw"] <- is.na(cad_df$cad_yn)
+cad_issues[, "cad_rsn"] <- with(cad_df, {
+  !is.na(cad_yn) & cad_yn == "No" & is.na(cad_no)
+})
+cad_issues[, "cad_other"] <- with(cad_df, {
+  !is.na(cad_no) & cad_no == "Other" & (is.na(cad_no_other) | cad_no_other == "")
+})
+cad_issues[, "cad_ache_ul"] <- with(cad_df, {
+  !is.na(cad_yn) & cad_yn == "Yes" & is.na(cad_ache)
+})
+cad_issues[, "cad_ache_ughb"] <- with(cad_df, {
+  !is.na(cad_yn) & cad_yn == "Yes" & is.na(cad_ache_2)
+})
+cad_issues[, "cad_bche"] <- with(cad_df, {
+  !is.na(cad_yn) & cad_yn == "Yes" & is.na(cad_bche)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+cad_errors <- create_error_df(
+  error_matrix = cad_issues, error_codes = cad_codes
+)
+
+cad_final <- cad_errors %>%
+  mutate(form = "CADUCEUS")
+
+
+
+
+
+
+################################################################################
 ## Combine all queries and export to output/ for uploading
 ################################################################################
 
@@ -4255,6 +4365,7 @@ error_dfs <- list(
   accelbed_final,
   accelplace_final,
   dna_final,
+  cad_final,
   famcap_final
 )
 
