@@ -77,6 +77,7 @@ day1_df <- post_to_df(
           "prehospital_function_assessment_form",
           "dates_tracking_form",
           "enrollment_data_collection_form_mds",
+          "enrollment_data_collection_form_expanded",
           "enrollment_nutrition_data_form",
           "dna_log"
         ),
@@ -109,6 +110,13 @@ day1_df <- post_to_df(
       (!is.na(reconsent_ph1) & reconsent_ph1 %in% reconsent_levels) |
       (!is.na(reconsent_ph2) & reconsent_ph2 %in% reconsent_levels) |
       (!is.na(consent_self) & consent_self == "Yes"),
+    ## Indicator for whether patient was enrolled on the day of ICU admission
+    ##  (helps with medication queries in enrollment EDS form)
+    enroll_icuadm = case_when(
+      is.na(enroll_dttm) | is.na(icuadm_1_dttm) ~ as.logical(NA),
+      enroll_dttm == icuadm_1_dttm              ~ TRUE,
+      TRUE                                      ~ FALSE
+    ),
     ## Indicator for whether patient died *in the hospital*
     ##  (death is recorded in the same spot whether it occurs in hospital or
     ##   in follow-up)
@@ -2533,6 +2541,410 @@ enrollmds_errors <- create_error_df(
 enrollmds_final <- bind_rows(enrollmds_missing, enrollmds_errors) %>%
   mutate(form = "Enrollment Data (MDS)")
 
+
+
+
+
+
+
+################################################################################
+## Enrollment Data (Expanded Data Set)
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+enrolleds_missvars <- c(
+  "apache_chronic", "emer_surg", "weight", "height", "uo_enr", "arf_enr",
+  "gcs_enr", "rass_enr_agitated", "rass_enr_sedated", "sofa_cv_enr", "abg_enr",
+  "chest_ct_yn", "ab_ct_yn", "head_ct_yn"
+)
+enrolleds_missing <- check_missing(
+  df = day1_df, variables = enrolleds_missvars, ddict = ih_ddict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+enrolleds_codes <- tribble(
+  ~ code,            ~ msg,
+  ## Vitals
+  "temp_low_miss",  "Lowest temperature should be recorded or marked Not Available",
+  "temp_high_miss", "Highest temperature should be recorded or marked Not Available",
+  "hr_low_miss",    "Lowest heart rate should be recorded or marked Not Available",
+  "hr_high_miss",   "Highest heart rate should be recorded or marked Not Available",
+  "rr_low_miss",    "Lowest respiratory rate should be recorded or marked Not Available",
+  "rr_high_miss",   "Highest respiratory rate should be recorded or marked Not Available",
+  "map_low_miss",   "Lowest MAP should be recorded or marked Not Available",
+  "map_high_miss",  "Highest MAP should be recorded or marked Not Available",
+  "fio2_high_miss", "Highest FiO2 should be recorded or marked Not Available",
+  "o2sat_high_miss","O2 sat corresponding to highest FiO2 should be recorded or marked Not Available",
+  "o2sat_low_miss", "Lowest O2 sat should be recorded or marked Not Available",
+  "temp_low_miss",  "Lowest temperature should be recorded or marked Not Available",
+  "temp_high_miss", "Highest temperature should be recorded or marked Not Available",
+  ## Labs
+  "na_low_miss",    "Lowest sodium should be recorded or marked Not Available",
+  "na_high_miss",   "Highest sodium should be recorded or marked Not Available",
+  "k_low_miss",     "Lowest potassium should be recorded or marked Not Available",
+  "k_high_miss",    "Highest potassium should be recorded or marked Not Available",
+  "co2_low_miss",   "Lowest CO2 (HCO3) should be recorded or marked Not Available",
+  "co2_high_miss",  "Highest CO2 (HCO3) should be recorded or marked Not Available",
+  "cr_high_miss",   "Highest creatinine should be recorded or marked Not Available",
+  "bili_high_miss", "Highest bilirubin should be recorded or marked Not Available",
+  "hct_low_miss",   "Lowest hematocrit should be recorded or marked Not Available",
+  "hct_high_miss",  "Highest hematocrit should be recorded or marked Not Available",
+  "wbc_low_miss",   "Lowest WBC should be recorded or marked Not Available",
+  "wbc_high_miss",  "Highest WBC should be recorded or marked Not Available",
+  "plt_low_miss",   "Lowest platelets should be recorded or marked Not Available",
+  "plt_high_miss",  "Highest platelets should be recorded or marked Not Available",
+  "abg_ph_miss",    "ABG done; pH should be recorded or marked Not Available",
+  "abg_pco2_miss",  "ABG done; PCO2 should be recorded or marked Not Available",
+  "abg_pao2_miss",  "ABG done; PaO2 should be recorded or marked Not Available",
+  "abg_fio2_miss",  "ABG done; FiO2 should be recorded or marked Not Available",
+  "abg_pf_miss",    "ABG done; P/F ratio should be recorded or marked Not Available",
+  ## Imaging
+  "ct_chest_num",   "Missing number of chest CTs",
+  "ct_chest_dates", "Number of dates entered do not match recorded number of chest CTs",
+  "ct_ab_num",      "Missing number of abdominal CTs",
+  "ct_ab_dates",    "Number of dates entered do not match recorded number of abdominal CTs",
+  "ct_brain_num",   "Missing number of brain MRI or head CTs",
+  "ct_brain_dates", "Number of dates entered do not match recorded number of head CTs",
+  ## Medications
+  "dex_none",        "No value recorded for dexmedetomidine; should be 0 if no drug was given",
+  "dex_enr",         "Patient was enrolled on day of ICU admission; dose of dexmedetomidine between ICU admission and enrollment should be 0",
+  "diaz_none",       "No value recorded for diazepam; should be 0 if no drug was given",
+  "diaz_enr",        "Patient was enrolled on day of ICU admission; dose of diazepam between ICU admission and enrollment should be 0",
+  "fent_none",       "No value recorded for fentanyl; should be 0 if no drug was given",
+  "fent_enr",        "Patient was enrolled on day of ICU admission; dose of fentanyl between ICU admission and enrollment should be 0",
+  "halop_po_none",   "No value recorded for haloperidol PO; should be 0 if no drug was given",
+  "halop_po_enr",    "Patient was enrolled on day of ICU admission; dose of haloperidol PO between ICU admission and enrollment should be 0",
+  "halop_iv_none",   "No value recorded for haloperidol IV; should be 0 if no drug was given",
+  "halop_iv_enr",    "Patient was enrolled on day of ICU admission; dose of haloperidol IV between ICU admission and enrollment should be 0",
+  "hydromorph_none", "No value recorded for hydromorphone; should be 0 if no drug was given",
+  "hydromorph_enr",  "Patient was enrolled on day of ICU admission; dose of hydromorphone between ICU admission and enrollment should be 0",
+  "ketam_none",      "No value recorded for ketamine; should be 0 if no drug was given",
+  "ketam_enr",       "Patient was enrolled on day of ICU admission; dose of ketamine between ICU admission and enrollment should be 0",
+  "loraz_none",      "No value recorded for lorazepam; should be 0 if no drug was given",
+  "loraz_enr",       "Patient was enrolled on day of ICU admission; dose of lorazepam between ICU admission and enrollment should be 0",
+  "midaz_none",      "No value recorded for midazolam; should be 0 if no drug was given",
+  "midaz_enr",       "Patient was enrolled on day of ICU admission; dose of midazolam between ICU admission and enrollment should be 0",
+  "morph_none",      "No value recorded for morphine; should be 0 if no drug was given",
+  "morph_enr",       "Patient was enrolled on day of ICU admission; dose of morphine between ICU admission and enrollment should be 0",
+  "olanz_none",      "No value recorded for olanzapine; should be 0 if no drug was given",
+  "olanz_enr",       "Patient was enrolled on day of ICU admission; dose of olanzapine between ICU admission and enrollment should be 0",
+  "propofol_none",   "No value recorded for propofol; should be 0 if no drug was given",
+  "propofol_enr",    "Patient was enrolled on day of ICU admission; dose of propofol between ICU admission and enrollment should be 0",
+  "quet_none",       "No value recorded for quetiapine; should be 0 if no drug was given",
+  "quet_enr",        "Patient was enrolled on day of ICU admission; dose of quetiapine between ICU admission and enrollment should be 0",
+  "remi_none",       "No value recorded for remifentanil; should be 0 if no drug was given",
+  "remi_enr",        "Patient was enrolled on day of ICU admission; dose of remifentanil between ICU admission and enrollment should be 0",
+  "risp_none",       "No value recorded for risperidone; should be 0 if no drug was given",
+  "risp_enr",        "Patient was enrolled on day of ICU admission; dose of risperidone between ICU admission and enrollment should be 0",
+  "zipras_none",     "No value recorded for ziprasidone; should be 0 if no drug was given",
+  "zipras_enr",      "Patient was enrolled on day of ICU admission; dose of ziprasidone between ICU admission and enrollment should be 0",
+  "mends2_none",     "No value recorded for MENDS2 study drug; should be 0 if no drug was given",
+  "mends2_enr",      "Patient was enrolled on day of ICU admission; dose of MENDS2 study drug between ICU admission and enrollment should be 0",
+  "betametha_none",  "No value recorded for betamethasone; should be 0 if no drug was given",
+  "betametha_enr",   "Patient was enrolled on day of ICU admission; dose of betamethasone between ICU admission and enrollment should be 0",
+  "dexametha_po_none","No value recorded for dethamethasone PO; should be 0 if no drug was given",
+  "dexametha_po_enr","Patient was enrolled on day of ICU admission; dose of dethamethasone PO between ICU admission and enrollment should be 0",
+  "dexametha_iv_none","No value recorded for dethamethasone IV; should be 0 if no drug was given",
+  "dexametha_iv_enr","Patient was enrolled on day of ICU admission; dose of dethamethasone IV between ICU admission and enrollment should be 0",
+  "fludro_none",     "No value recorded for fludrocortisone; should be 0 if no drug was given",
+  "fludro_enr",      "Patient was enrolled on day of ICU admission; dose of fludrocortisone between ICU admission and enrollment should be 0",
+  "hydrocort_po_none","No value recorded for hydrocortisone PO; should be 0 if no drug was given",
+  "hydrocort_po_enr","Patient was enrolled on day of ICU admission; dose of hydrocortisone PO between ICU admission and enrollment should be 0",
+  "hydrocort_iv_none","No value recorded for hydrocortisone IV; should be 0 if no drug was given",
+  "hydrocort_iv_enr","Patient was enrolled on day of ICU admission; dose of hydrocortisone IV between ICU admission and enrollment should be 0",
+  "methylpred_po_none","No value recorded for methylprednisone PO; should be 0 if no drug was given",
+  "methylpred_po_enr","Patient was enrolled on day of ICU admission; dose of methylprednisone PO between ICU admission and enrollment should be 0",
+  "methylpred_iv_none","No value recorded for methylprednisone IV; should be 0 if no drug was given",
+  "methylpred_iv_enr","Patient was enrolled on day of ICU admission; dose of methylprednisone IV between ICU admission and enrollment should be 0",
+  "prednisolo_none", "No value recorded for prednisolone; should be 0 if no drug was given",
+  "prednisolo_enr",  "Patient was enrolled on day of ICU admission; dose of prednisolone between ICU admission and enrollment should be 0",
+  "prednisone_none", "No value recorded for prednisone; should be 0 if no drug was given",
+  "prednisone_enr",  "Patient was enrolled on day of ICU admission; dose of prednisone between ICU admission and enrollment should be 0",
+  "triam_po_none",   "No value recorded for triamcinolone PO; should be 0 if no drug was given",
+  "triam_po_enr",    "Patient was enrolled on day of ICU admission; dose of triamcinolone PO between ICU admission and enrollment should be 0",
+  "triam_iv_none",   "No value recorded for triamcinolone IV; should be 0 if no drug was given",
+  "triam_iv_enr",    "Patient was enrolled on day of ICU admission; dose of triamcinolone IV between ICU admission and enrollment should be 0",
+  "addlmeds_none",   "At least one of None or additional medication categories should be marked",
+  "addlmeds_enr",    "Patient was enrolled on day of ICU admission; additional medication categories should only be marked None"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in day1_df; columns = # potential issues
+enrolleds_issues <- matrix(
+  FALSE, ncol = nrow(enrolleds_codes), nrow = nrow(day1_df)
+)
+colnames(enrolleds_issues) <- enrolleds_codes$code
+rownames(enrolleds_issues) <- with(day1_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## Vitals
+enrolleds_issues[, "temp_low_miss"] <-
+  with(day1_df, is.na(temp_enr_low) & is.na(temp_enr_na))
+enrolleds_issues[, "temp_high_miss"] <-
+  with(day1_df, is.na(temp_enr_high) & is.na(temp_enr_na))
+enrolleds_issues[, "hr_low_miss"] <-
+  with(day1_df, is.na(hr_enr_low) & is.na(hr_enr_na))
+enrolleds_issues[, "hr_high_miss"] <-
+  with(day1_df, is.na(hr_enr_high) & is.na(hr_enr_na))
+enrolleds_issues[, "rr_low_miss"] <-
+  with(day1_df, is.na(rr_enr_low) & is.na(rr_enr_na))
+enrolleds_issues[, "rr_high_miss"] <-
+  with(day1_df, is.na(rr_enr_high) & is.na(rr_enr_na))
+enrolleds_issues[, "map_low_miss"] <-
+  with(day1_df, is.na(map_enr_low) & is.na(map_enr_na))
+enrolleds_issues[, "map_high_miss"] <-
+  with(day1_df, is.na(map_enr_high) & is.na(map_enr_na))
+enrolleds_issues[, "fio2_high_miss"] <-
+  with(day1_df, is.na(fio2_high_enr) & is.na(fio2_high_enr_na))
+enrolleds_issues[, "o2sat_low_miss"] <-
+  with(day1_df, is.na(o2sat_enr) & is.na(o2sat_enr_na))
+enrolleds_issues[, "o2sat_high_miss"] <-
+  with(day1_df, is.na(o2sat_fio2_enr) & is.na(o2sat_fio2_enr_na))
+
+## Labs
+enrolleds_issues[, "na_low_miss"] <-
+  with(day1_df, is.na(na_enr_low) & is.na(na_enr_na))
+enrolleds_issues[, "na_high_miss"] <-
+  with(day1_df, is.na(na_enr_high) & is.na(na_enr_na))
+enrolleds_issues[, "k_low_miss"] <-
+  with(day1_df, is.na(k_enr_low) & is.na(k_enr_na))
+enrolleds_issues[, "k_high_miss"] <-
+  with(day1_df, is.na(k_enr_high) & is.na(k_enr_na))
+enrolleds_issues[, "co2_low_miss"] <-
+  with(day1_df, is.na(co2_enr_low) & is.na(co2_enr_na))
+enrolleds_issues[, "co2_high_miss"] <-
+  with(day1_df, is.na(co2_enr_high) & is.na(co2_enr_na))
+enrolleds_issues[, "cr_high_miss"] <-
+  with(day1_df, is.na(cr_enr_high) & is.na(cr_enr_na))
+enrolleds_issues[, "bili_high_miss"] <-
+  with(day1_df, is.na(bilirubin_enr) & is.na(bilirubin_enr_na))
+enrolleds_issues[, "hct_low_miss"] <-
+  with(day1_df, is.na(pcv_enr_low) & is.na(pcv_enr_na))
+enrolleds_issues[, "hct_high_miss"] <-
+  with(day1_df, is.na(pcv_enr_high) & is.na(pcv_enr_na))
+enrolleds_issues[, "wbc_low_miss"] <-
+  with(day1_df, is.na(wbc_enr_low) & is.na(wbc_enr_na))
+enrolleds_issues[, "wbc_high_miss"] <-
+  with(day1_df, is.na(wbc_enr_high) & is.na(wbc_enr_na))
+enrolleds_issues[, "plt_low_miss"] <-
+  with(day1_df, is.na(plt_enr_low) & is.na(plt_enr_na))
+enrolleds_issues[, "plt_high_miss"] <-
+  with(day1_df, is.na(plt_enr_high) & is.na(plt_enr_na))
+enrolleds_issues[, "abg_ph_miss"] <- with(day1_df, {
+  !is.na(abg_enr) & abg_enr == "Yes" & is.na(ph_enr) & is.na(ph_enr_na)
+})
+enrolleds_issues[, "abg_pco2_miss"] <- with(day1_df, {
+  !is.na(abg_enr) & abg_enr == "Yes" & is.na(pco2_enr) & is.na(pco2_enr_na)
+})
+enrolleds_issues[, "abg_pao2_miss"] <- with(day1_df, {
+  !is.na(abg_enr) & abg_enr == "Yes" & is.na(pao2_enr) & is.na(pao2_enr_na)
+})
+enrolleds_issues[, "abg_fio2_miss"] <- with(day1_df, {
+  !is.na(abg_enr) & abg_enr == "Yes" & is.na(fio2_enr) & is.na(fio2_enr_na)
+})
+enrolleds_issues[, "abg_pf_miss"] <- with(day1_df, {
+  !is.na(abg_enr) & abg_enr == "Yes" & is.na(pfratio_enr) & is.na(pfratio_enr_na)
+})
+
+## Imaging
+enrolleds_issues[, "ct_chest_num"] <- with(day1_df, {
+  !is.na(chest_ct_yn) & chest_ct_yn == "Yes" & is.na(chest_ct_num)
+})
+enrolleds_issues[, "ct_chest_dates"] <- !is.na(day1_df$chest_ct_num) &
+  rowSums(
+    !is.na(day1_df[, grep("^chest\\_ct\\_date\\_[0-9]+$", names(day1_df))])
+  ) != day1_df$chest_ct_num
+enrolleds_issues[, "ct_ab_num"] <- with(day1_df, {
+  !is.na(ab_ct_yn) & ab_ct_yn == "Yes" & is.na(ab_ct_num)
+})
+enrolleds_issues[, "ct_ab_dates"] <- !is.na(day1_df$ab_ct_num) &
+  rowSums(
+    !is.na(day1_df[, grep("^ab\\_ct\\_date\\_[0-9]+$", names(day1_df))])
+  ) != day1_df$ab_ct_num
+enrolleds_issues[, "ct_brain_num"] <- with(day1_df, {
+  !is.na(head_ct_yn) & head_ct_yn == "Yes" & is.na(head_ct_num)
+})
+enrolleds_issues[, "ct_brain_dates"] <- !is.na(day1_df$head_ct_num) &
+  rowSums(
+    !is.na(day1_df[, grep("^head\\_ct\\_date\\_[0-9]+$", names(day1_df))])
+  ) != day1_df$head_ct_num
+
+## Medications
+enrolleds_issues[, "dex_none"] <- is.na(day1_df$dex_enrollment)
+enrolleds_issues[, "dex_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(dex_enrollment) & dex_enrollment > 0
+})
+enrolleds_issues[, "diaz_none"] <- is.na(day1_df$diaz_enrollment)
+enrolleds_issues[, "diaz_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(diaz_enrollment) & diaz_enrollment > 0
+})
+enrolleds_issues[, "fent_none"] <- is.na(day1_df$fentanyl_enrollment)
+enrolleds_issues[, "fent_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(fentanyl_enrollment) & fentanyl_enrollment > 0
+})
+enrolleds_issues[, "halop_po_none"] <- is.na(day1_df$haolperidol_po_enrollment)
+enrolleds_issues[, "halop_po_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(haolperidol_po_enrollment) & haolperidol_po_enrollment > 0
+})
+enrolleds_issues[, "halop_iv_none"] <- is.na(day1_df$haolperidol_iv_enrollment)
+enrolleds_issues[, "halop_iv_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(haolperidol_iv_enrollment) & haolperidol_iv_enrollment > 0
+})
+enrolleds_issues[, "hydromorph_none"] <- is.na(day1_df$hydromorphone_enrollment)
+enrolleds_issues[, "hydromorph_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(hydromorphone_enrollment) & hydromorphone_enrollment > 0
+})
+enrolleds_issues[, "ketam_none"] <- is.na(day1_df$ketamine_iv_enrollment)
+enrolleds_issues[, "ketam_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(ketamine_iv_enrollment) & ketamine_iv_enrollment > 0
+})
+enrolleds_issues[, "loraz_none"] <- is.na(day1_df$lorazepam_enrollment)
+enrolleds_issues[, "loraz_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(lorazepam_enrollment) & lorazepam_enrollment > 0
+})
+enrolleds_issues[, "midaz_none"] <- is.na(day1_df$midazolam_enrollment)
+enrolleds_issues[, "midaz_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(midazolam_enrollment) & midazolam_enrollment > 0
+})
+enrolleds_issues[, "morph_none"] <- is.na(day1_df$morphine_enrollment)
+enrolleds_issues[, "morph_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(morphine_enrollment) & morphine_enrollment > 0
+})
+enrolleds_issues[, "olanz_none"] <- is.na(day1_df$olanzapine_enrollment)
+enrolleds_issues[, "olanz_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(olanzapine_enrollment) & olanzapine_enrollment > 0
+})
+enrolleds_issues[, "propofol_none"] <- is.na(day1_df$propofol_enrollment)
+enrolleds_issues[, "propofol_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(propofol_enrollment) & propofol_enrollment > 0
+})
+enrolleds_issues[, "quet_none"] <- is.na(day1_df$quetiapine_enrollment)
+enrolleds_issues[, "quet_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(quetiapine_enrollment) & quetiapine_enrollment > 0
+})
+enrolleds_issues[, "remi_none"] <- is.na(day1_df$remifentanil_enrollment)
+enrolleds_issues[, "remi_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(remifentanil_enrollment) & remifentanil_enrollment > 0
+})
+enrolleds_issues[, "risp_none"] <- is.na(day1_df$risperidone_enrollment)
+enrolleds_issues[, "risp_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(risperidone_enrollment) & risperidone_enrollment > 0
+})
+enrolleds_issues[, "zipras_none"] <- is.na(day1_df$ziprasidone_enrollment)
+enrolleds_issues[, "zipras_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(ziprasidone_enrollment) & ziprasidone_enrollment > 0
+})
+enrolleds_issues[, "mends2_none"] <-
+  with(day1_df, !is.na(coenroll_6) & !is.na(mends2_drug_enr))
+enrolleds_issues[, "mends2_enr"] <- with(day1_df, {
+  !is.na(coenroll_6) & !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(mends2_drug_enr) & mends2_drug_enr > 0
+})
+
+## Corticosteroids
+enrolleds_issues[, "betametha_none"] <- is.na(day1_df$betametha_im_enr)
+enrolleds_issues[, "betametha_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(betametha_im_enr) & betametha_im_enr > 0
+})
+enrolleds_issues[, "dexametha_po_none"] <- is.na(day1_df$dexametha_po_enr)
+enrolleds_issues[, "dexametha_po_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(dexametha_po_enr) & dexametha_po_enr > 0
+})
+enrolleds_issues[, "dexametha_iv_none"] <- is.na(day1_df$dexametha_iv_enr)
+enrolleds_issues[, "dexametha_iv_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(dexametha_iv_enr) & dexametha_iv_enr > 0
+})
+enrolleds_issues[, "fludro_none"] <- is.na(day1_df$fludrocort_po_enr)
+enrolleds_issues[, "fludro_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(fludrocort_po_enr) & fludrocort_po_enr > 0
+})
+enrolleds_issues[, "hydrocort_po_none"] <- is.na(day1_df$hydrocort_po_enr)
+enrolleds_issues[, "hydrocort_po_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(hydrocort_po_enr) & hydrocort_po_enr > 0
+})
+enrolleds_issues[, "hydrocort_iv_none"] <- is.na(day1_df$hydrocort_iv_enr)
+enrolleds_issues[, "hydrocort_iv_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(hydrocort_iv_enr) & hydrocort_iv_enr > 0
+})
+enrolleds_issues[, "methylpred_po_none"] <- is.na(day1_df$methyl_po_enr)
+enrolleds_issues[, "methylpred_po_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(methyl_po_enr) & methyl_po_enr > 0
+})
+enrolleds_issues[, "methylpred_iv_none"] <- is.na(day1_df$methyl_iv_enr)
+enrolleds_issues[, "methylpred_iv_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(methyl_iv_enr) & methyl_iv_enr > 0
+})
+enrolleds_issues[, "prednisolo_none"] <- is.na(day1_df$prednisolo_po_enr)
+enrolleds_issues[, "prednisolo_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(prednisolo_po_enr) & prednisolo_po_enr > 0
+})
+enrolleds_issues[, "prednisone_none"] <- is.na(day1_df$prednisone_po_enr)
+enrolleds_issues[, "prednisone_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(prednisone_po_enr) & prednisone_po_enr > 0
+})
+enrolleds_issues[, "triam_po_none"] <- is.na(day1_df$triam_po_enr)
+enrolleds_issues[, "triam_po_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(triam_po_enr) & triam_po_enr > 0
+})
+enrolleds_issues[, "triam_iv_none"] <- is.na(day1_df$triam_iv_enr)
+enrolleds_issues[, "triam_iv_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+    !is.na(triam_iv_enr) & triam_iv_enr > 0
+})
+
+## Additional medication categories
+enrolleds_issues[, "addlmeds_none"] <- rowSums(
+  !is.na(day1_df[, grep("^addl\\_meds\\_cat\\_enr\\_[0-9]+$", names(day1_df))])
+) == 0
+enrolleds_issues[, "addlmeds_enr"] <- with(day1_df, {
+  !is.na(enroll_icuadm) & enroll_icuadm &
+  rowSums(
+    !is.na(day1_df[, grep("^addl\\_meds\\_cat\\_enr\\_[1-9][0-9]*$", names(day1_df))])
+  ) > 0
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+enrolleds_errors <- create_error_df(
+  error_matrix = enrolleds_issues, error_codes = enrolleds_codes
+)
+
+enrolleds_final <- bind_rows(enrolleds_missing, enrolleds_errors) %>%
+  mutate(form = "Enrollment Data (EDS)")
+
 ################################################################################
 ## Enrollment Nutrition Data
 ################################################################################
@@ -4358,6 +4770,7 @@ error_dfs <- list(
   prehosp_final,
   dt_final,
   enrollmds_final,
+  enrolleds_final,
   nutr_final,
   dailymds_final,
   pad_final,
