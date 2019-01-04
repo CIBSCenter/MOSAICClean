@@ -177,13 +177,15 @@ daily_df <- post_to_df(
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
 
-## CADUCEUS, filled out on days 1/3/5 for all patients
+## CADUCEUS, filled out on days 1/3/5/discharge for all patients
 ## Step 1: Create dummy dataset to make sure all patients have a record for all
-##  three days
+##  four events
+all_ids <- sort(unique(c(day1_df$id, daily_df$id)))
+
 cad_dummy <- data.frame(
-  id = rep(all_ids, each = 3),
+  id = rep(all_ids, each = 4),
   redcap_event_name = rep(
-    c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5"),
+    c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5", "Discharge Day"),
     length(all_ids)
   ),
   stringsAsFactors = FALSE
@@ -199,7 +201,10 @@ cad_df <- post_to_df(
       forms = "caduceus_2",
       fields = c("id"),     ## additional fields
       events = paste(
-        c("enrollment_trial_d_arm_1","trial_day_3_arm_1","trial_day_5_arm_1"),
+        c(
+          "enrollment_trial_d_arm_1","trial_day_3_arm_1","trial_day_5_arm_1",
+          "discharge_day_arm_1"
+        ),
         collapse = ","
       ),
       rawOrLabel = "label", ## export factor *labels* vs numeric codes
@@ -279,7 +284,6 @@ walk(
 ##  indicates this, so it would have to be determined by the dates tracking form.
 ################################################################################
 
-all_ids <- sort(unique(c(day1_df$id, daily_df$id, famcap_df$id)))
 all_events <- c("Enrollment /Trial Day 1", paste("Trial Day", 2:28))
   ## discharge day is not included - it falls on one of the above events, or
   ## after Trial Day 28 if the patient had a long hospitalization
