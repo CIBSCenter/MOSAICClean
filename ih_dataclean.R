@@ -62,7 +62,7 @@ reconsent_levels <- c(
 )
 
 ## Data collected ONLY on day of enrollment
-day1_df <- post_to_df(
+day1_raw <- post_to_df(
   httr::POST(
     url = rc_url,
     body = list(
@@ -89,9 +89,24 @@ day1_df <- post_to_df(
       exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
     )
   )
-) %>%
-  ## Remove any test patients from dataset
-  filter(!str_detect(tolower(id), "test")) %>%
+)
+
+## Get IDs of patients who were withdrawn immediately (aka "screening failures")
+## This could be something like patient meeting all criteria, but no surrogate
+##  became available within 72h.
+## These patients will not be cleaned, because too many things would be missing;
+##  PMs will handle this manually.
+screen_failures <- day1_raw %>%
+  filter(!is.na(studywd_screen_failure) & studywd_screen_failure == "Yes") %>%
+  pull(id)
+
+day1_df <- day1_raw %>%
+  ## Remove any test patients from dataset, as well as patients who were
+  ##  immediately withdrawn due to screening failures; these will not be cleaned
+  filter(
+    !str_detect(tolower(id), "test"),
+    !(id %in% screen_failures)
+  ) %>%
   ## Convert date/time variables to proper formats
   mutate_at(vars(one_of(date_vars)), ymd) %>%
   mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.))) %>%
@@ -161,11 +176,13 @@ daily_df <- post_to_df(
     )
   )
 ) %>%
-  ## Remove any test patients from dataset and "Discharge Day" from events
+  ## Remove any test patients or screening failures from dataset and
+  ##  "Discharge Day" from events
   ##  (only forms done on Discharge Day are specimens and CADUCEUS; this is
   ##  easier than listing all other forms in API call above)
   filter(
     !str_detect(tolower(id), "test"),
+    !(id %in% screen_failures),
     !(redcap_event_name == "Discharge Day")
   ) %>%
   ## Add protocol; some data only collected under certain protocols
@@ -321,8 +338,11 @@ cadspec_df <- post_to_df(
     )
   )
 ) %>%
-  ## Remove any test patients from dataset
-  filter(!str_detect(tolower(id), "test")) %>%
+  ## Remove any test patients or screening failures from dataset
+  filter(
+    !str_detect(tolower(id), "test"),
+    !(id %in% screen_failures)
+  ) %>%
   ## Join with CADUCEUS dummy dataset
   right_join(cad_dummy, by = c("id", "redcap_event_name")) %>%
   ## Add on protocol - CADUCEUS added with protocol 1.02
@@ -370,8 +390,11 @@ famcap_df <- post_to_df(
     )
   )
 ) %>%
-  ## Remove any test patients from dataset
-  filter(!str_detect(tolower(id), "test")) %>%
+  ## Remove any test patients or screening failures from dataset
+  filter(
+    !str_detect(tolower(id), "test"),
+    !(id %in% screen_failures)
+  ) %>%
   ## Add on protocol - family capacitation added with protocol 1.02
   right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
   ## Add event name for patients with no form done
@@ -392,7 +415,6 @@ walk(
   redcap_dfs,
   ~ saveRDS(get(.), file = sprintf("testdata/%s.rds", .))
 )
-
 
 ################################################################################
 ## Enrollment Qualification Form
@@ -5155,4 +5177,16 @@ all_issues <- bind_rows(error_dfs) %>%
 ##  place
 
 ## -- Write final info to output/ ----------------------------------------------
-write_csv(all_issues, path = "output/testclean.csv")
+## Note: This is set up to allow for separate CSVs for different sites, based on
+##  patient IDs. At the time of this writing, there is only one site (VUMC),
+##  but this should allow for straightforward addition of sites if needed.
+walk(
+  unique(substr(all_issues$id, 1, 3)),
+  ~ write_csv(
+    subset(all_issues, substr(id, 1, 3) == .),
+    path = sprintf("output/%s_%s.csv", ., Sys.Date())
+  )
+)
+
+## All queries for testing purposes
+# write_csv(all_issues, path = "output/testclean.csv")
