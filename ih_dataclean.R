@@ -168,6 +168,8 @@ daily_df <- post_to_df(
     !str_detect(tolower(id), "test"),
     !(redcap_event_name == "Discharge Day")
   ) %>%
+  ## Add protocol; some data only collected under certain protocols
+  left_join(dplyr::select(day1_df, id, protocol), by = "id") %>%
   ## Convert date/time variables to proper formats
   mutate_at(vars(one_of(date_vars)), ymd) %>%
   mutate_at(vars(one_of(dttm_vars)), ~ date(ymd_hm(.))) %>%
@@ -3608,6 +3610,198 @@ dailymds_final <- bind_rows(dailymds_missing, dailymds_errors) %>%
   mutate(form = "Daily Data Collection (MDS)")
 
 ################################################################################
+## Daily Data (Expanded Data Set)
+################################################################################
+
+## -- Missingness checks -------------------------------------------------------
+dailyeds_missvars <- c(
+  "rass_daily_low", "rass_daily_high", "gcs_daily_low", "gcs_daily_high",
+  "uo_daily", "cv_sofa_daily", "dialysis_daily", "reintubation_daily",
+  "image_daily"
+)
+dailyeds_missing <- check_missing(
+  df = daily_df, variables = dailyeds_missvars, ddict = ih_ddict
+)
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+dailyeds_codes <- tribble(
+  ~ code,        ~ msg,
+  ## Labs
+  "cr_high_miss",   "Highest creatinine should be recorded or marked Not Available",
+  "bili_high_miss", "Highest bilirubin should be recorded or marked Not Available",
+  "plt_low_miss",   "Lowest platelets should be recorded or marked Not Available",
+  "inr_low_miss",   "Lowest INR should be recorded or marked Not Available",
+  "inr_high_miss",  "Highest INR should be recorded or marked Not Available",
+  "pf_low_miss",    "Lowest P/F ratio should be recorded or marked Not Available",
+
+  ## Vitals
+  "temp_low_miss",  "Lowest temperature should be recorded or marked Not Available",
+  "temp_high_miss", "Highest temperature should be recorded or marked Not Available",
+  "hr_low_miss",    "Lowest heart rate should be recorded or marked Not Available",
+  "hr_high_miss",   "Highest heart rate should be recorded or marked Not Available",
+  "sbp_low_miss",   "Lowest systolic blood pressure should be recorded or marked Not Available",
+  "o2sat_low_miss", "Lowest O2 sat should be recorded or marked Not Available",
+  "pilot_02",       "Either no or both answers marked for PILOT study protocol",
+  "pilot_arm",      "On PILOT study protocol, but either no arm or multiple target arms marked",
+  "sf_low_miss",    "Lowest S/F ratio should be recorded or marked Not Available",
+  
+  ## Other
+  "vaso_none",     "Either none or at least one vasopressor or inotrope should be marked",
+  "imaging_which", "Missing which type(s) of imaging were performed",
+  
+  ## Medications
+  "clonaz_none",     "No value recorded for clonazepam; should be 0 if no drug was given",
+  "dex_none",        "No value recorded for dexmedetomidine; should be 0 if no drug was given",
+  "diaz_none",       "No value recorded for diazepam; should be 0 if no drug was given",
+  "fent_none",       "No value recorded for fentanyl; should be 0 if no drug was given",
+  "halop_po_none",   "No value recorded for haloperidol PO; should be 0 if no drug was given",
+  "halop_iv_none",   "No value recorded for haloperidol IV; should be 0 if no drug was given",
+  "hydromorph_none", "No value recorded for hydromorphone; should be 0 if no drug was given",
+  "ketam_none",      "No value recorded for ketamine; should be 0 if no drug was given",
+  "loraz_none",      "No value recorded for lorazepam; should be 0 if no drug was given",
+  "midaz_none",      "No value recorded for midazolam; should be 0 if no drug was given",
+  "morph_none",      "No value recorded for morphine; should be 0 if no drug was given",
+  "olanz_none",      "No value recorded for olanzapine; should be 0 if no drug was given",
+  "propofol_none",   "No value recorded for propofol; should be 0 if no drug was given",
+  "quet_none",       "No value recorded for quetiapine; should be 0 if no drug was given",
+  "remi_none",       "No value recorded for remifentanil; should be 0 if no drug was given",
+  "risp_none",       "No value recorded for risperidone; should be 0 if no drug was given",
+  "zipras_none",     "No value recorded for ziprasidone; should be 0 if no drug was given",
+  "mends2_none",     "No value recorded for MENDS2 study drug; should be 0 if no drug was given",
+  "betametha_none",  "No value recorded for betamethasone; should be 0 if no drug was given",
+  "dexametha_po_none","No value recorded for dethamethasone PO; should be 0 if no drug was given",
+  "dexametha_iv_none","No value recorded for dethamethasone IV; should be 0 if no drug was given",
+  "fludro_none",     "No value recorded for fludrocortisone; should be 0 if no drug was given",
+  "hydrocort_po_none","No value recorded for hydrocortisone PO; should be 0 if no drug was given",
+  "hydrocort_iv_none","No value recorded for hydrocortisone IV; should be 0 if no drug was given",
+  "methylpred_po_none","No value recorded for methylprednisone PO; should be 0 if no drug was given",
+  "methylpred_iv_none","No value recorded for methylprednisone IV; should be 0 if no drug was given",
+  "prednisolo_none", "No value recorded for prednisolone; should be 0 if no drug was given",
+  "prednisone_none", "No value recorded for prednisone; should be 0 if no drug was given",
+  "triam_po_none",   "No value recorded for triamcinolone PO; should be 0 if no drug was given",
+  "triam_iv_none",   "No value recorded for triamcinolone IV; should be 0 if no drug was given",
+  "addlmeds_none",   "At least one of None or additional medication categories should be marked"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+dailyeds_issues <- matrix(
+  FALSE, ncol = nrow(dailyeds_codes), nrow = nrow(daily_df)
+)
+colnames(dailyeds_issues) <- dailyeds_codes$code
+rownames(dailyeds_issues) <- with(daily_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+## Labs
+dailyeds_issues[, "cr_high_miss"] <-
+  with(daily_df, is.na(cr_daily) & is.na(cr_daily_na))
+dailyeds_issues[, "bili_high_miss"] <-
+  with(daily_df, is.na(bili_daily_high) & is.na(bili_daily_na))
+dailyeds_issues[, "plt_low_miss"] <-
+  with(daily_df, is.na(plt_daily) & is.na(plt_daily_na))
+dailyeds_issues[, "inr_low_miss"] <- with(daily_df, {
+  !is.na(protocol) & protocol == "Protocol v1.01" &
+    is.na(inr_daily_low) & is.na(inr_daily_na)
+})
+dailyeds_issues[, "inr_high_miss"] <- with(daily_df, {
+  !is.na(protocol) & protocol == "Protocol v1.01" &
+    is.na(inr_daily_high) & is.na(inr_daily_na)
+})
+dailyeds_issues[, "pf_low_miss"] <-
+  with(daily_df, is.na(pfratio_daily) & is.na(pfratio_daily_na))
+
+## Vitals
+dailyeds_issues[, "temp_low_miss"] <-
+  with(daily_df, is.na(temp_daily_low) & is.na(temp_daily_na))
+dailyeds_issues[, "temp_high_miss"] <-
+  with(daily_df, is.na(temp_daily_high) & is.na(temp_daily_na))
+dailyeds_issues[, "hr_low_miss"] <-
+  with(daily_df, is.na(hr_daily_low) & is.na(hr_daily_na))
+dailyeds_issues[, "hr_high_miss"] <-
+  with(daily_df, is.na(hr_daily_high) & is.na(hr_daily_na))
+dailyeds_issues[, "sbp_low_miss"] <-
+  with(daily_df, is.na(sbp_daily_low) & is.na(sbp_daily_na))
+dailyeds_issues[, "o2sat_low_miss"] <-
+  with(daily_df, is.na(o2sat_daily) & is.na(o2sat_daily_na))
+dailyeds_issues[, "sf_low_miss"] <-
+  with(daily_df, is.na(sfratio_daily) & is.na(sfratio_daily_na))
+
+## Other
+dailyeds_issues[, "pilot_02"] <- with(daily_df, {
+  id %in% subset(day1_df, !is.na(coenroll_11))$id &
+    rowSums(!is.na(daily_df[, paste0("pilot_study_daily_active_", 1:2)])) != 1
+})
+dailyeds_issues[, "pilot_arm"] <- with(daily_df, {
+  id %in% subset(day1_df, !is.na(coenroll_11))$id &
+    rowSums(!is.na(daily_df[, paste0("pilot_study_daily_arm_", 1:3)])) != 1
+})
+dailyeds_issues[, "vaso_none"] <- rowSums(
+  !is.na(daily_df[, grep("^vasopressor\\_daily\\_[0-9]+$", names(daily_df))])
+) == 0
+dailyeds_issues[, "imaging_which"] <- with(daily_df, {
+  !is.na(image_daily) & image_daily == "Yes" &
+    rowSums(
+      !is.na(daily_df[, grep("^image\\_y\\_daily\\_[0-9]+$", names(daily_df))])
+    ) == 0
+})
+
+## Medications
+dailyeds_issues[, "clonaz_none"] <- is.na(daily_df$clonal_daily)
+dailyeds_issues[, "dex_none"] <- is.na(daily_df$dex_daily)
+dailyeds_issues[, "diaz_none"] <- is.na(daily_df$diaz_daily)
+dailyeds_issues[, "fent_none"] <- is.na(daily_df$fentanyl_daily)
+dailyeds_issues[, "halop_po_none"] <- is.na(daily_df$haolperidol_po_daily)
+dailyeds_issues[, "halop_iv_none"] <- is.na(daily_df$haolperidol_iv_daily)
+dailyeds_issues[, "hydromorph_none"] <- is.na(daily_df$hydromorphone_daily)
+dailyeds_issues[, "ketam_none"] <- is.na(daily_df$ketamine_daily)
+dailyeds_issues[, "loraz_none"] <- is.na(daily_df$lorazepam_daily)
+dailyeds_issues[, "midaz_none"] <- is.na(daily_df$midazolam_daily)
+dailyeds_issues[, "morph_none"] <- is.na(daily_df$morphine_daily)
+dailyeds_issues[, "olanz_none"] <- is.na(daily_df$olanzapine_daily)
+dailyeds_issues[, "propofol_none"] <- is.na(daily_df$propofol_daily)
+dailyeds_issues[, "quet_none"] <- is.na(daily_df$quetiapine_daily)
+dailyeds_issues[, "remi_none"] <- is.na(daily_df$remifentanil_daily)
+dailyeds_issues[, "risp_none"] <- is.na(daily_df$risperidone_daily)
+dailyeds_issues[, "zipras_none"] <- is.na(daily_df$ziprasidone_daily)
+dailyeds_issues[, "mends2_none"] <- with(daily_df, {
+  id %in% subset(day1_df, !is.na(coenroll_6))$id & !is.na(mends2_drug_daily)
+})
+
+## Corticosteroids
+dailyeds_issues[, "betametha_none"] <- is.na(daily_df$betametha_im_daily)
+dailyeds_issues[, "dexametha_po_none"] <- is.na(daily_df$dexametha_po_daily)
+dailyeds_issues[, "dexametha_iv_none"] <- is.na(daily_df$dexametha_iv_daily)
+dailyeds_issues[, "fludro_none"] <- is.na(daily_df$fludrocort_po_daily)
+dailyeds_issues[, "hydrocort_po_none"] <- is.na(daily_df$hydrocort_po_daily)
+dailyeds_issues[, "hydrocort_iv_none"] <- is.na(daily_df$hydrocort_iv_daily)
+dailyeds_issues[, "methylpred_po_none"] <- is.na(daily_df$methyl_po_daily)
+dailyeds_issues[, "methylpred_iv_none"] <- is.na(daily_df$methyl_iv_daily)
+dailyeds_issues[, "prednisolo_none"] <- is.na(daily_df$prednisolo_po_daily)
+dailyeds_issues[, "prednisone_none"] <- is.na(daily_df$prednisone_po_daily)
+dailyeds_issues[, "triam_po_none"] <- is.na(daily_df$triam_po_daily)
+dailyeds_issues[, "triam_iv_none"] <- is.na(daily_df$triam_iv_daily)
+
+## Additional medication categories
+dailyeds_issues[, "addlmeds_none"] <- rowSums(
+  !is.na(daily_df[, grep("^addl\\_meds\\_cat\\_daily\\_[0-9]+$", names(daily_df))])
+) == 0
+
+## -- Create a final data.frame of errors + messages ---------------------------
+dailyeds_errors <- create_error_df(
+  error_matrix = dailyeds_issues, error_codes = dailyeds_codes
+)
+
+dailyeds_final <- bind_rows(dailyeds_missing, dailyeds_errors) %>%
+  mutate(form = "Daily Data Collection (EDS)")
+
+################################################################################
 ## PAD Form
 ################################################################################
 
@@ -4754,11 +4948,6 @@ cad_errors <- create_error_df(
 cad_final <- cad_errors %>%
   mutate(form = "CADUCEUS")
 
-
-
-
-
-
 ################################################################################
 ## Combine all queries and export to output/ for uploading
 ################################################################################
@@ -4773,6 +4962,7 @@ error_dfs <- list(
   enrolleds_final,
   nutr_final,
   dailymds_final,
+  dailyeds_final,
   pad_final,
   mobility_final,
   accelbed_final,
