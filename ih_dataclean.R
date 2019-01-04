@@ -55,7 +55,7 @@ dttm_vars <- ih_ddict %>%
 ## -- Export data --------------------------------------------------------------
 ## day1_df and daily_df will be used to clean multiple forms; other data.frames
 ##  are used for specific forms/time points (eg, CADUCEUS only filled out on
-##  days 1/3/5)
+##  days 1/3/5/discharge)
 reconsent_levels <- c(
   "Yes, agreed to continue (signed ICD)",
   "No, withdrew from further participation (signed ICD)"
@@ -177,96 +177,8 @@ daily_df <- post_to_df(
   separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
   filter(as.numeric(ptnum) <= last_pt)
 
-## CADUCEUS, filled out on days 1/3/5/discharge for all patients
-## Step 1: Create dummy dataset to make sure all patients have a record for all
-##  four events
-all_ids <- sort(unique(c(day1_df$id, daily_df$id)))
-
-cad_dummy <- data.frame(
-  id = rep(all_ids, each = 4),
-  redcap_event_name = rep(
-    c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5", "Discharge Day"),
-    length(all_ids)
-  ),
-  stringsAsFactors = FALSE
-)
-
-cad_df <- post_to_df(
-  httr::POST(
-    url = rc_url,
-    body = list(
-      token = Sys.getenv("MOSAIC_IH"),
-      content = "record",   ## export *records*
-      format = "csv",       ## export as *CSV*
-      forms = "caduceus_2",
-      fields = c("id"),     ## additional fields
-      events = paste(
-        c(
-          "enrollment_trial_d_arm_1","trial_day_3_arm_1","trial_day_5_arm_1",
-          "discharge_day_arm_1"
-        ),
-        collapse = ","
-      ),
-      rawOrLabel = "label", ## export factor *labels* vs numeric codes
-      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
-    )
-  )
-) %>%
-  ## Remove any test patients from dataset
-  filter(!str_detect(tolower(id), "test")) %>%
-  ## Join with CADUCEUS dummy dataset
-  right_join(cad_dummy, by = c("id", "redcap_event_name")) %>%
-  ## Add on protocol - CADUCEUS added with protocol 1.02
-  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
-  ## TEMPORARY: Select only patients up till last_pt (set above)
-  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
-  filter(
-    as.numeric(ptnum) <= last_pt,
-    ## Also remove any patients on protocol 1.01 - CADUCEUS not added until 1.02
-    !(!is.na(protocol) & protocol == "Protocol v1.01")
-  )
-
-## Family Capacitation Survey, administered on event 7
-famcap_df <- post_to_df(
-  httr::POST(
-    url = rc_url,
-    body = list(
-      token = Sys.getenv("MOSAIC_IH"),
-      content = "record",   ## export *records*
-      format = "csv",       ## export as *CSV*
-      forms = paste(c("family_capcitation_survery"), collapse = ","),
-      fields = c("id"),     ## additional fields
-      events = "trial_day_7_arm_1", ## study day 7 event only
-      rawOrLabel = "label", ## export factor *labels* vs numeric codes
-      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
-    )
-  )
-) %>%
-  ## Remove any test patients from dataset
-  filter(!str_detect(tolower(id), "test")) %>%
-  ## Add on protocol - family capacitation added with protocol 1.02
-  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
-  ## Add event name for patients with no form done
-  mutate(redcap_event_name = "Trial Day 7") %>%
-  ## Add indicators for whether each survey was done, fully or partially
-  mutate_at(vars(famcap_comp), ~ str_detect(., "^Yes")) %>%
-  ## TEMPORARY: Select only patients up till last_pt (set above)
-  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
-  filter(
-    as.numeric(ptnum) <= last_pt,
-    ## Also remove any patients on protocol 1.01 - survey not added until 1.02
-    !(!is.na(protocol) & protocol == "Protocol v1.01")
-  )
-
-## Save dfs to a test data file in case API/wifi aren't working
-redcap_dfs <- str_subset(ls(), "^[a-z,0-9]+\\_df$")
-walk(
-  redcap_dfs,
-  ~ saveRDS(get(.), file = sprintf("testdata/%s.rds", .))
-)
-
 ################################################################################
-## Create Daily Dummy Dataset
+## SLIGHT DETOUR FROM EXPORTS: Create Daily Dummy Dataset
 ##
 ## Several forms are filled out on a daily basis while patients are in the
 ##  hospital. A few forms, like the specimen log and CADUCEUS, are filled out on
@@ -284,6 +196,7 @@ walk(
 ##  indicates this, so it would have to be determined by the dates tracking form.
 ################################################################################
 
+all_ids <- sort(unique(c(day1_df$id, daily_df$id)))
 all_events <- c("Enrollment /Trial Day 1", paste("Trial Day", 2:28))
   ## discharge day is not included - it falls on one of the above events, or
   ## after Trial Day 28 if the patient had a long hospitalization
@@ -352,6 +265,134 @@ daily_df <- left_join(
   daily_df %>% mutate(in_daily = TRUE),
   by = c("id", "redcap_event_name")
 )
+
+################################################################################
+## Back to our regularly scheduled export program
+################################################################################
+
+## CADUCEUS and specimen log, filled out days 1/3/5/discharge for all patients
+## Step 1: Create dummy dataset to make sure all patients have a record for all
+##  four events
+cad_dummy <- data.frame(
+  id = rep(all_ids, each = 4),
+  redcap_event_name = rep(
+    c("Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5", "Discharge Day"),
+    length(all_ids)
+  ),
+  stringsAsFactors = FALSE
+) %>%
+  ## Add dates from dummy_df to check specimen dates
+  left_join(
+    dummy_df %>%
+      filter(
+        redcap_event_name %in% c(
+          "Enrollment /Trial Day 1", "Trial Day 3", "Trial Day 5"
+        )
+      ) %>%
+      dplyr::select(id, redcap_event_name, study_date),
+    by = c("id", "redcap_event_name")
+  ) %>%
+  ## Add hospital discharge date, and fill in date of discharge event
+  left_join(day1_df %>% dplyr::select(id, hospdis_dttm), by = "id") %>%
+  mutate(
+    study_date = if_else(
+      redcap_event_name == "Discharge Day", hospdis_dttm, study_date
+    )
+  )
+
+cadspec_df <- post_to_df(
+  httr::POST(
+    url = rc_url,
+    body = list(
+      token = Sys.getenv("MOSAIC_IH"),
+      content = "record",   ## export *records*
+      format = "csv",       ## export as *CSV*
+      forms = "caduceus_2,specimen_log",
+      fields = c("id"),     ## additional fields
+      events = paste(
+        c(
+          "enrollment_trial_d_arm_1","trial_day_3_arm_1","trial_day_5_arm_1",
+          "discharge_day_arm_1"
+        ),
+        collapse = ","
+      ),
+      rawOrLabel = "label", ## export factor *labels* vs numeric codes
+      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
+    )
+  )
+) %>%
+  ## Remove any test patients from dataset
+  filter(!str_detect(tolower(id), "test")) %>%
+  ## Join with CADUCEUS dummy dataset
+  right_join(cad_dummy, by = c("id", "redcap_event_name")) %>%
+  ## Add on protocol - CADUCEUS added with protocol 1.02
+  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
+  ## Add indicator for whether specimens represent a discharge day (could be
+  ##  marked in multiple fields)
+  mutate(
+    spec_dc = if_else(
+      (!is.na(study_day_specimen_3) & study_day_specimen_3 == "Day 3 and Discharge") |
+        (!is.na(study_day_specimen_5) & study_day_specimen_5 == "Day 5 and Discharge") |
+        (!is.na(study_day_specimen_dc) & study_day_specimen_dc == "Discharge only"),
+      TRUE, FALSE
+    ),
+    ## Indicator for whether all purple tubes expected were drawn
+    ## Should be 12 on enrollment/discharge, 6 other days
+    purple_all = case_when(
+      is.na(purple_drawn) ~ as.logical(NA),
+      (redcap_event_name == "Enrollment /Trial Day 1" | spec_dc) &
+        purple_drawn == 12 ~ TRUE,
+      !(redcap_event_name == "Enrollment /Trial Day 1" | spec_dc) &
+        purple_drawn == 6 ~ TRUE,
+      TRUE ~ FALSE
+    )
+  ) %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(as.numeric(ptnum) <= last_pt)
+
+## CADUCEUS only: Remove patients on protocol 1.01; CADUCEUS added with 1.02
+cad_df <- cadspec_df %>% filter(!is.na(protocol) & protocol != "Protocol v1.01")
+
+## Family Capacitation Survey, administered on event 7
+famcap_df <- post_to_df(
+  httr::POST(
+    url = rc_url,
+    body = list(
+      token = Sys.getenv("MOSAIC_IH"),
+      content = "record",   ## export *records*
+      format = "csv",       ## export as *CSV*
+      forms = paste(c("family_capcitation_survery"), collapse = ","),
+      fields = c("id"),     ## additional fields
+      events = "trial_day_7_arm_1", ## study day 7 event only
+      rawOrLabel = "label", ## export factor *labels* vs numeric codes
+      exportCheckboxLabel = TRUE ## export ckbox *labels* vs Unchecked/Checked
+    )
+  )
+) %>%
+  ## Remove any test patients from dataset
+  filter(!str_detect(tolower(id), "test")) %>%
+  ## Add on protocol - family capacitation added with protocol 1.02
+  right_join(day1_df %>% dplyr::select(id, protocol), by = "id") %>%
+  ## Add event name for patients with no form done
+  mutate(redcap_event_name = "Trial Day 7") %>%
+  ## Add indicators for whether each survey was done, fully or partially
+  mutate_at(vars(famcap_comp), ~ str_detect(., "^Yes")) %>%
+  ## TEMPORARY: Select only patients up till last_pt (set above)
+  separate(id, into = c("site", "ptnum"), sep = "-", remove = FALSE) %>%
+  filter(
+    as.numeric(ptnum) <= last_pt,
+    ## Also remove any patients on protocol 1.01 - survey not added until 1.02
+    !(!is.na(protocol) & protocol == "Protocol v1.01")
+  )
+
+## Save dfs to a test data file in case API/wifi aren't working
+redcap_dfs <- str_subset(ls(), "^[a-z,0-9]+\\_df$")
+walk(
+  redcap_dfs,
+  ~ saveRDS(get(.), file = sprintf("testdata/%s.rds", .))
+)
+
 
 ################################################################################
 ## Enrollment Qualification Form
@@ -4895,7 +4936,7 @@ famcap_final <- famcap_errors %>%
   mutate(form = "Family Capacitation Survey")
 
 ################################################################################
-## CADUCEUS (completed on days 1, 3, 5, even after death/discharge/WD)
+## CADUCEUS (completed on days 1, 3, 5, discharge, even after death/discharge/WD)
 ################################################################################
 
 ## -- Create error codes + corresponding messages for all issues *except* ------
@@ -4952,6 +4993,123 @@ cad_errors <- create_error_df(
 cad_final <- cad_errors %>%
   mutate(form = "CADUCEUS")
 
+
+
+
+
+
+################################################################################
+## Specimen log (completed days 1/3/5/discharge, even after death/discharge/WD)
+################################################################################
+
+## -- Create error codes + corresponding messages for all issues *except* ------
+## -- fields that are simply missing or should fall within specified limits ----
+
+## Codes: Short, like variable names
+## Messages: As clear as possible to the human reader
+
+## tribble = row-wise data.frame; easier to match code + message
+spec_codes <- tribble(
+  ~ code,              ~ msg,
+  "spec_dc",           "Discharge Day, but missing whether discharge labs already recorded on another event",
+  "spec_date_na",      "Missing date specimens were drawn",
+  "spec_date_right",   "Specimen date does not match dates tracking; please check form date and/or enrollment date",
+  "spec_day",          "Missing day(s) specimens are for",
+  "spec_blue",         "Enrollment or Discharge day, but missing number of blue tubes",
+  "spec_blue_why",     "Missing reason fewer than 4 blue tubes drawn",
+  "spec_blue_other",   "No explanation for other reason <4 blue tubes drawn",
+  "spec_purple",       "Missing number of purple tubes",
+  "spec_purple_why",   "Missing reason fewer than expected purple tubes drawn",
+  "spec_purple_other", "No explanation for other reason <4 blue tubes drawn",
+  "spec_cryo_same",    "Missing whether all tubes placed in same box",
+  "spec_rack_1",       "Missing cryobox rack 1",
+  "spec_box_1",        "Missing cryobox box 1",
+  "spec_rack_2",       "Missing cryobox rack 2",
+  "spec_box_2",        "Missing cryobox box 2"
+) %>%
+  as.data.frame() ## But create_error_df() doesn't handle tribbles
+
+## Create empty matrix to hold all potential issues
+## Rows = # rows in daily_df; columns = # potential issues
+spec_issues <- matrix(
+  FALSE, ncol = nrow(spec_codes), nrow = nrow(cadspec_df)
+)
+colnames(spec_issues) <- spec_codes$code
+rownames(spec_issues) <- with(cadspec_df, {
+  paste(id, redcap_event_name, sep = '; ') })
+
+spec_issues[, "spec_dc"] <- with(cadspec_df, {
+  !is.na(redcap_event_name) & redcap_event_name == "Discharge Day" &
+    is.na(specimens_discharge)
+})
+spec_issues[, "spec_date_na"] <- with(cadspec_df, {
+  !is.na(specimens_discharge) & specimens_discharge == "No" &
+    is.na(specimen_date)
+})
+spec_issues[, "spec_date_right"] <- with(cadspec_df, {
+  !is.na(specimen_date) & !is.na(study_date) & specimen_date != study_date
+})
+spec_issues[, "spec_day"] <- with(cadspec_df, {
+  (redcap_event_name == "Enrollment /Trial Day 1" & is.na(study_day_specimen_e)) |
+    (redcap_event_name == "Trial Day 3" & is.na(study_day_specimen_3)) |
+    (redcap_event_name == "Trial Day 5" & is.na(study_day_specimen_5))
+})
+
+## Blue tubes: drawn at enrollment and discharge
+##  (day 3/5 could also represent discharge)
+spec_issues[, "spec_blue"] <- with(cadspec_df, {
+  (redcap_event_name %in% c("Enrollment /Trial Day 1") | spec_dc) &
+    is.na(blue_drawn)
+})
+spec_issues[, "spec_blue_why"] <- with(cadspec_df, {
+  (redcap_event_name %in% c("Enrollment /Trial Day 1") | spec_dc) &
+    !is.na(blue_drawn) & blue_drawn < 4 & is.na(blue_rsn)
+})
+spec_issues[, "spec_blue_other"] <- with(cadspec_df, {
+  !is.na(blue_rsn) & blue_rsn == "Other" &
+    (is.na(blue_other) | blue_other == "")
+})
+
+## Purple tubes: Drawn on each specimen day, but 12 at enrollment/discharge and
+##  only 6 on days 3/5
+spec_issues[, "spec_purple"] <- is.na(cadspec_df$purple_drawn)
+spec_issues[, "spec_purple_why"] <- with(cadspec_df, {
+  !is.na(purple_drawn) & !purple_all & is.na(purple_rsn) & is.na(purple_rsn_6)
+})
+spec_issues[, "spec_purple_other"] <- with(cadspec_df, {
+  (!is.na(purple_rsn) & purple_rsn == "Other" &
+    (is.na(purple_other) | purple_other == "")) |
+    (!is.na(purple_rsn_6) & purple_rsn_6 == "Other" &
+       (is.na(purple_rsn_6_other) | purple_rsn_6_other == ""))
+})
+
+## Cryoboxes
+spec_issues[, "spec_cryo_same"] <- with(cadspec_df, {
+  ((!is.na(blue_drawn) & blue_drawn > 0) |
+    (!is.na(purple_drawn) & purple_drawn > 0)) &
+    is.na(same_box_yn)
+})
+spec_issues[, "spec_rack_1"] <- with(cadspec_df, {
+  !is.na(same_box_yn) & is.na(specimen_rack_1)
+})
+spec_issues[, "spec_box_1"] <- with(cadspec_df, {
+  !is.na(same_box_yn) & is.na(specimen_box_1)
+})
+spec_issues[, "spec_rack_2"] <- with(cadspec_df, {
+  !is.na(same_box_yn) & same_box_yn == "2 Boxes" & is.na(specimen_rack_2)
+})
+spec_issues[, "spec_box_2"] <- with(cadspec_df, {
+  !is.na(same_box_yn) & same_box_yn == "2 Boxes" & is.na(specimen_box_2)
+})
+
+## -- Create a final data.frame of errors + messages ---------------------------
+spec_errors <- create_error_df(
+  error_matrix = spec_issues, error_codes = spec_codes
+)
+
+spec_final <- spec_errors %>%
+  mutate(form = "Specimen Log")
+
 ################################################################################
 ## Combine all queries and export to output/ for uploading
 ################################################################################
@@ -4973,6 +5131,7 @@ error_dfs <- list(
   accelplace_final,
   dna_final,
   cad_final,
+  spec_final,
   famcap_final
 )
 
